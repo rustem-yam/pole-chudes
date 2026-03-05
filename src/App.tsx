@@ -182,6 +182,16 @@ export default function App() {
     setRounds((prev) => prev.map((r) => (r.id === activeRound.id ? { ...r, ...patch } : r)))
   }
 
+  const prevRound = () => {
+    if (rounds.length === 0) return
+    const idx = rounds.findIndex((r) => r.id === activeRound.id)
+    const prevIdx = idx === -1 ? 0 : (idx - 1 + rounds.length) % rounds.length
+    setActiveRoundId(rounds[prevIdx].id)
+    setOpenedLetters([])
+    setUsedLetters([])
+    setStatus(`Переключено: ${rounds[prevIdx].title}`)
+  }
+
   const addRound = () => {
     const nextNumber = rounds.length + 1
     const next: RoundItem = {
@@ -620,6 +630,7 @@ export default function App() {
           <button className="ghost" onClick={() => setShowHotkeys((v) => !v)}>
             {showHotkeys ? 'Скрыть hotkeys' : 'Показать hotkeys'}
           </button>
+          <button className="ghost" onClick={prevRound}>Предыдущий раунд</button>
           <button className="ghost" onClick={addRound}>+ Раунд</button>
           <button className="ghost" onClick={nextRound}>Следующий раунд</button>
           <button className="ghost" onClick={quickStartRound}>Быстрый старт раунда</button>

@@ -2,7 +2,7 @@
   min-height: 100vh;
   padding: 20px;
   box-sizing: border-box;
-  color: #e2e8f0;
+  color: #0f172a;
 }
 
 .topbar {
@@ -18,7 +18,7 @@
 }
 
 .step {
-  color: #94a3b8;
+  color: #475569;
   font-size: 13px;
 }
 
@@ -30,10 +30,11 @@
 
 .boardCard,
 .card {
-  background: #111827;
-  border: 1px solid #23324d;
+  background: #ffffff;
+  border: 1px solid #dbe5f4;
   border-radius: 12px;
   padding: 14px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 .boardHeader {
@@ -44,7 +45,7 @@
 }
 
 .label {
-  color: #94a3b8;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -58,23 +59,73 @@
 .cell {
   width: 44px;
   height: 44px;
-  border: 1px solid #31456a;
+  border: 1px solid #bfd0eb;
   border-radius: 8px;
   display: grid;
   place-items: center;
   font-size: 20px;
   font-weight: 700;
-  background: #0f172a;
+  background: #f8fbff;
 }
 
 .space {
   width: 16px;
 }
 
-.hint {
+.wheelCard {
+  margin-top: 12px;
+  border: 1px solid #dbe5f4;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fbff;
+}
+
+.wheelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wheelHeader h2 {
   margin: 0;
-  color: #94a3b8;
-  font-size: 13px;
+  font-size: 18px;
+}
+
+.wheelStrip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(70px, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.wheelSector {
+  border: 1px solid #c6d5ee;
+  background: #fff;
+  border-radius: 8px;
+  text-align: center;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wheelSector.active {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.wheelResult {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.applyBtn {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #fff;
 }
 
 .panel {
@@ -97,15 +148,16 @@ input,
 select,
 button {
   border-radius: 8px;
-  border: 1px solid #31456a;
-  background: #0f172a;
-  color: #e2e8f0;
+  border: 1px solid #bfd0eb;
+  background: #ffffff;
+  color: #0f172a;
   padding: 8px 10px;
 }
 
 button {
   background: #2563eb;
   border-color: #2563eb;
+  color: white;
   cursor: pointer;
 }
 
@@ -119,9 +171,10 @@ button {
   grid-template-columns: auto 1fr auto;
   gap: 10px;
   align-items: center;
-  border: 1px solid #24344f;
+  border: 1px solid #dbe5f4;
   border-radius: 10px;
   padding: 8px;
+  background: #f8fbff;
 }
 
 .player.active {
@@ -130,8 +183,8 @@ button {
 }
 
 .avatarBtn {
-  border: 1px solid #31456a;
-  background: #0b1324;
+  border: 1px solid #bfd0eb;
+  background: #fff;
   width: 44px;
   height: 44px;
   display: grid;
@@ -153,7 +206,7 @@ button {
   display: grid;
   gap: 4px;
   font-size: 12px;
-  color: #94a3b8;
+  color: #64748b;
 }
 
 .scoreWrap input {
@@ -166,12 +219,12 @@ button {
 }
 
 button.danger {
-  background: #7f1d1d;
-  border-color: #7f1d1d;
+  background: #dc2626;
+  border-color: #dc2626;
 }
 
 .empty {
-  color: #94a3b8;
+  color: #64748b;
 }
 
 @media (max-width: 980px) {

@@ -8,9 +8,25 @@ type Player = {
   score: number
 }
 
+type Sector =
+  | { type: 'points'; label: string; value: number }
+  | { type: 'bankrupt'; label: string }
+  | { type: 'lose_turn'; label: string }
+
 const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐨', '🐸', '🐵', '🐙', '🐧', '🐺', '🐻', '🐱']
 
 const DEMO_PHRASE = 'ПОЛЕ ЧУДЕС'
+
+const SECTORS: Sector[] = [
+  { type: 'points', value: 100, label: '100' },
+  { type: 'points', value: 200, label: '200' },
+  { type: 'points', value: 300, label: '300' },
+  { type: 'points', value: 500, label: '500' },
+  { type: 'points', value: 700, label: '700' },
+  { type: 'points', value: 1000, label: '1000' },
+  { type: 'bankrupt', label: 'БАНКРОТ' },
+  { type: 'lose_turn', label: 'ПРОПУСК ХОДА' },
+]
 
 function maskPhrase(phrase: string) {
   return phrase.split('').map((ch) => (ch === ' ' ? ' ' : '_'))
@@ -25,6 +41,10 @@ export default function App() {
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newAvatar, setNewAvatar] = useState(AVATARS[0])
+
+  const [isSpinning, setIsSpinning] = useState(false)
+  const [currentSector, setCurrentSector] = useState<Sector | null>(null)
+  const [spinIndex, setSpinIndex] = useState(0)
 
   const masked = useMemo(() => maskPhrase(DEMO_PHRASE), [])
 
@@ -60,11 +80,44 @@ export default function App() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, avatar } : p)))
   }
 
+  const spinWheel = () => {
+    if (isSpinning) return
+    setIsSpinning(true)
+    setCurrentSector(null)
+
+    const targetIndex = Math.floor(Math.random() * SECTORS.length)
+    let ticks = 0
+    const totalTicks = 24 + targetIndex
+
+    const timer = setInterval(() => {
+      ticks += 1
+      setSpinIndex((prev) => (prev + 1) % SECTORS.length)
+
+      if (ticks >= totalTicks) {
+        clearInterval(timer)
+        const result = SECTORS[targetIndex]
+        setCurrentSector(result)
+        setIsSpinning(false)
+      }
+    }, 70)
+  }
+
+  const applySectorToActive = () => {
+    if (!activePlayerId || !currentSector) return
+    if (currentSector.type !== 'points') return
+
+    setPlayers((prev) =>
+      prev.map((p) =>
+        p.id === activePlayerId ? { ...p, score: p.score + currentSector.value } : p,
+      ),
+    )
+  }
+
   return (
     <div className="page">
       <header className="topbar">
         <h1>Поле Чудес — студия ведущего</h1>
-        <span className="step">Шаг 1/6: участники + табло</span>
+        <span className="step">Шаг 2/6: барабан ведущего + настройка игроков</span>
       </header>
 
       <main className="layout">
@@ -92,7 +145,32 @@ export default function App() {
             )}
           </div>
 
-          <p className="hint">Пока это каркас: в следующем шаге добавим барабан и механику открытия букв.</p>
+          <div className="wheelCard">
+            <div className="wheelHeader">
+              <h2>Барабан ведущего</h2>
+              <button onClick={spinWheel} disabled={isSpinning}>
+                {isSpinning ? 'Крутим...' : 'Крутить барабан'}
+              </button>
+            </div>
+
+            <div className="wheelStrip">
+              {SECTORS.map((s, i) => (
+                <div key={`${s.label}-${i}`} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
+                  {s.label}
+                </div>
+              ))}
+            </div>
+
+            <div className="wheelResult">
+              <strong>Результат: </strong>
+              {currentSector ? currentSector.label : '—'}
+              {currentSector?.type === 'points' && (
+                <button className="applyBtn" onClick={applySectorToActive}>
+                  Начислить активному игроку
+                </button>
+              )}
+            </div>
+          </div>
         </section>
 
         <aside className="panel">

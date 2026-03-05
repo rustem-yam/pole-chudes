@@ -72,6 +72,27 @@
   width: 16px;
 }
 
+.guessCard {
+  margin-top: 12px;
+  border: 1px solid #dbe5f4;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fbff;
+}
+
+.guessRow {
+  display: grid;
+  grid-template-columns: 90px auto 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.usedLetters,
+.status {
+  font-size: 13px;
+  color: #475569;
+}
+
 .wheelCard {
   margin-top: 12px;
   border: 1px solid #dbe5f4;
@@ -159,6 +180,12 @@ button {
   border-color: #2563eb;
   color: white;
   cursor: pointer;
+}
+
+button.ghost {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
 }
 
 .players {

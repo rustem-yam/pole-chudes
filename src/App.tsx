@@ -14,7 +14,6 @@ type Sector =
   | { type: 'lose_turn'; label: string }
 
 const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐨', '🐸', '🐵', '🐙', '🐧', '🐺', '🐻', '🐱']
-
 const DEMO_PHRASE = 'ПОЛЕ ЧУДЕС'
 
 const SECTORS: Sector[] = [
@@ -28,12 +27,12 @@ const SECTORS: Sector[] = [
   { type: 'lose_turn', label: 'ПРОПУСК ХОДА' },
 ]
 
-function maskPhrase(phrase: string) {
-  return phrase.split('').map((ch) => (ch === ' ' ? ' ' : '_'))
-}
-
 function uid() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function normalizeLetter(v: string) {
+  return v.trim().toUpperCase().replace('Ё', 'Е')
 }
 
 export default function App() {
@@ -46,19 +45,24 @@ export default function App() {
   const [currentSector, setCurrentSector] = useState<Sector | null>(null)
   const [spinIndex, setSpinIndex] = useState(0)
 
-  const masked = useMemo(() => maskPhrase(DEMO_PHRASE), [])
+  const [openedLetters, setOpenedLetters] = useState<string[]>([])
+  const [usedLetters, setUsedLetters] = useState<string[]>([])
+  const [letterInput, setLetterInput] = useState('')
+  const [wordInput, setWordInput] = useState('')
+  const [status, setStatus] = useState('Готово к игре')
+
+  const masked = useMemo(() => {
+    return DEMO_PHRASE.split('').map((ch) => {
+      if (ch === ' ') return ' '
+      return openedLetters.includes(normalizeLetter(ch)) ? ch : '_'
+    })
+  }, [openedLetters])
 
   const addPlayer = () => {
     const name = newPlayerName.trim()
     if (!name) return
 
-    const p: Player = {
-      id: uid(),
-      name,
-      avatar: newAvatar,
-      score: 0,
-    }
-
+    const p: Player = { id: uid(), name, avatar: newAvatar, score: 0 }
     setPlayers((prev) => [...prev, p])
     setNewPlayerName('')
     if (!activePlayerId) setActivePlayerId(p.id)
@@ -84,6 +88,7 @@ export default function App() {
     if (isSpinning) return
     setIsSpinning(true)
     setCurrentSector(null)
+    setStatus('Крутим барабан...')
 
     const targetIndex = Math.floor(Math.random() * SECTORS.length)
     let ticks = 0
@@ -98,26 +103,80 @@ export default function App() {
         const result = SECTORS[targetIndex]
         setCurrentSector(result)
         setIsSpinning(false)
+        if (result.type === 'bankrupt') setStatus('БАНКРОТ! Обнули очки игрока при необходимости.')
+        else if (result.type === 'lose_turn') setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
+        else setStatus(`Выпало ${result.value}. Назови букву или слово.`)
       }
     }, 70)
   }
 
-  const applySectorToActive = () => {
-    if (!activePlayerId || !currentSector) return
-    if (currentSector.type !== 'points') return
-
+  const applyPointsToActive = (points: number) => {
+    if (!activePlayerId) return
     setPlayers((prev) =>
-      prev.map((p) =>
-        p.id === activePlayerId ? { ...p, score: p.score + currentSector.value } : p,
-      ),
+      prev.map((p) => (p.id === activePlayerId ? { ...p, score: p.score + points } : p)),
     )
+  }
+
+  const guessLetter = () => {
+    const letter = normalizeLetter(letterInput)
+    if (!letter || letter.length !== 1) return
+    if (usedLetters.includes(letter)) {
+      setStatus(`Буква ${letter} уже была.`)
+      return
+    }
+
+    setUsedLetters((prev) => [...prev, letter])
+
+    const phrase = DEMO_PHRASE.toUpperCase().replace('Ё', 'Е')
+    const count = [...phrase].filter((ch) => ch === letter).length
+
+    if (count > 0) {
+      setOpenedLetters((prev) => [...new Set([...prev, letter])])
+
+      if (currentSector?.type === 'points') {
+        applyPointsToActive(currentSector.value * count)
+        setStatus(`Есть ${count} шт. ${letter}. Начислено: ${currentSector.value * count}`)
+      } else {
+        setStatus(`Есть ${count} шт. ${letter}.`) 
+      }
+    } else {
+      setStatus(`Буквы ${letter} нет. Передай ход.`)
+    }
+
+    setLetterInput('')
+  }
+
+  const guessWord = () => {
+    const guess = wordInput.trim().toUpperCase().replace('Ё', 'Е')
+    const answer = DEMO_PHRASE.toUpperCase().replace('Ё', 'Е')
+
+    if (!guess) return
+
+    if (guess === answer) {
+      const letters = [...new Set(answer.replace(/\s+/g, '').split(''))]
+      setOpenedLetters(letters)
+      setStatus('СЛОВО УГАДАНО! 🎉')
+    } else {
+      setStatus('Неверное слово. Передай ход.')
+    }
+
+    setWordInput('')
+  }
+
+  const resetRound = () => {
+    setOpenedLetters([])
+    setUsedLetters([])
+    setLetterInput('')
+    setWordInput('')
+    setCurrentSector(null)
+    setStatus('Новый раунд готов')
   }
 
   return (
     <div className="page">
       <header className="topbar">
         <h1>Поле Чудес — студия ведущего</h1>
-        <span className="step">Шаг 2/6: барабан ведущего + настройка игроков</span>
+        <span className="step">Шаг 3/6: барабан + буквы/слово + ручной контроль очков</span>
       </header>
 
       <main className="layout">
@@ -138,11 +197,29 @@ export default function App() {
               ch === ' ' ? (
                 <div key={`space-${i}`} className="space" />
               ) : (
-                <div key={i} className="cell">
-                  {ch}
-                </div>
+                <div key={i} className="cell">{ch}</div>
               ),
             )}
+          </div>
+
+          <div className="guessCard">
+            <div className="guessRow">
+              <input
+                placeholder="Буква"
+                value={letterInput}
+                onChange={(e) => setLetterInput(e.target.value.slice(0, 1))}
+              />
+              <button onClick={guessLetter}>Открыть букву</button>
+              <input
+                placeholder="Слово целиком"
+                value={wordInput}
+                onChange={(e) => setWordInput(e.target.value)}
+              />
+              <button onClick={guessWord}>Проверить слово</button>
+              <button className="ghost" onClick={resetRound}>Новый раунд</button>
+            </div>
+            <div className="usedLetters">Были буквы: {usedLetters.join(', ') || '—'}</div>
+            <div className="status">Статус: {status}</div>
           </div>
 
           <div className="wheelCard">
@@ -164,11 +241,6 @@ export default function App() {
             <div className="wheelResult">
               <strong>Результат: </strong>
               {currentSector ? currentSector.label : '—'}
-              {currentSector?.type === 'points' && (
-                <button className="applyBtn" onClick={applySectorToActive}>
-                  Начислить активному игроку
-                </button>
-              )}
             </div>
           </div>
         </section>
@@ -177,17 +249,9 @@ export default function App() {
           <div className="card">
             <h2>Добавить игрока</h2>
             <div className="formRow">
-              <input
-                placeholder="Имя игрока"
-                value={newPlayerName}
-                onChange={(e) => setNewPlayerName(e.target.value)}
-              />
+              <input placeholder="Имя игрока" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />
               <select value={newAvatar} onChange={(e) => setNewAvatar(e.target.value)}>
-                {AVATARS.map((a) => (
-                  <option value={a} key={a}>
-                    {a}
-                  </option>
-                ))}
+                {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
               </select>
               <button onClick={addPlayer}>Добавить</button>
             </div>
@@ -209,25 +273,15 @@ export default function App() {
                       <div className="playerName">{p.name}</div>
                       <label className="scoreWrap">
                         Очки
-                        <input
-                          type="number"
-                          value={p.score}
-                          onChange={(e) => updateScore(p.id, Number(e.target.value || 0))}
-                        />
+                        <input type="number" value={p.score} onChange={(e) => updateScore(p.id, Number(e.target.value || 0))} />
                       </label>
                     </div>
 
                     <div className="playerActions">
                       <select value={p.avatar} onChange={(e) => updateAvatar(p.id, e.target.value)}>
-                        {AVATARS.map((a) => (
-                          <option value={a} key={a}>
-                            {a}
-                          </option>
-                        ))}
+                        {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
                       </select>
-                      <button className="danger" onClick={() => removePlayer(p.id)}>
-                        Удалить
-                      </button>
+                      <button className="danger" onClick={() => removePlayer(p.id)}>Удалить</button>
                     </div>
                   </div>
                 ))}

@@ -432,27 +432,25 @@ export default function App() {
             )}
           </div>
 
-          {!screenMode && (
-            <div className="guessCard">
-              <div className="guessRow">
-                <input
-                  placeholder="Буква"
-                  value={letterInput}
-                  onChange={(e) => setLetterInput(e.target.value.slice(0, 1))}
-                />
-                <button onClick={guessLetter}>Открыть букву</button>
-                <input
-                  placeholder="Слово целиком"
-                  value={wordInput}
-                  onChange={(e) => setWordInput(e.target.value)}
-                />
-                <button onClick={guessWord}>Проверить слово</button>
-                <button className="ghost" onClick={resetRound}>Новый раунд</button>
-              </div>
-              <div className="usedLetters">Были буквы: {usedLetters.join(', ') || '—'}</div>
-              <div className="status">Статус: {status}</div>
+          <div className="guessCard">
+            <div className="guessRow">
+              <input
+                placeholder="Буква"
+                value={letterInput}
+                onChange={(e) => setLetterInput(e.target.value.slice(0, 1))}
+              />
+              <button onClick={guessLetter}>Открыть букву</button>
+              <input
+                placeholder="Слово целиком"
+                value={wordInput}
+                onChange={(e) => setWordInput(e.target.value)}
+              />
+              <button onClick={guessWord}>Проверить слово</button>
+              <button className="ghost" onClick={resetRound}>Новый раунд</button>
             </div>
-          )}
+            <div className="usedLetters">Были буквы: {usedLetters.join(', ') || '—'}</div>
+            <div className="status">Статус: {status}</div>
+          </div>
 
           <div className={`wheelCard ${screenMode ? 'wheelCardScreen' : ''}`}>
             <div className="wheelHeader">
@@ -467,7 +465,9 @@ export default function App() {
               <div className="wheelCircle">
                 {SECTORS.map((s, i) => {
                   const angle = (360 / SECTORS.length) * i
-                  const style = { transform: `rotate(${angle}deg) translateY(-120px)` } as CSSProperties
+                  const style = {
+                    transform: `rotate(${angle}deg) translateY(-120px) rotate(${-angle}deg)`,
+                  } as CSSProperties
                   return (
                     <div key={`${s.label}-${i}`} style={style} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
                       {s.label}

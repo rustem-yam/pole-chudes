@@ -43,6 +43,28 @@ function normalizeLetter(v: string) {
   return v.trim().toUpperCase().replace('Ё', 'Е')
 }
 
+function playTone(freq: number, duration = 120) {
+  try {
+    const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.frequency.value = freq
+    osc.type = 'triangle'
+    gain.gain.value = 0.02
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start()
+    setTimeout(() => {
+      osc.stop()
+      void ctx.close()
+    }, duration)
+  } catch {
+    // ignore audio issues
+  }
+}
+
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([])
   const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
@@ -65,6 +87,8 @@ export default function App() {
   const [screenMode, setScreenMode] = useState(false)
   const [showHotkeys, setShowHotkeys] = useState(true)
   const [bigBoardMode, setBigBoardMode] = useState(false)
+  const [partyMode, setPartyMode] = useState(true)
+  const [celebrate, setCelebrate] = useState(false)
 
   const masked = useMemo(() => {
     return phrase.split('').map((ch) => {
@@ -128,6 +152,7 @@ export default function App() {
     setIsSpinning(true)
     setCurrentSector(null)
     setStatus('Крутим барабан...')
+    if (partyMode) playTone(420, 90)
 
     const targetIndex = Math.floor(Math.random() * SECTORS.length)
     let ticks = 0
@@ -142,6 +167,7 @@ export default function App() {
         const result = SECTORS[targetIndex]
         setCurrentSector(result)
         setIsSpinning(false)
+        if (partyMode) playTone(result.type === 'points' ? 620 : 260, 180)
         if (result.type === 'bankrupt') setStatus('БАНКРОТ! Обнули очки игрока при необходимости.')
         else if (result.type === 'lose_turn') setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
         else setStatus(`Выпало ${result.value}. Назови букву или слово.`)
@@ -176,10 +202,12 @@ export default function App() {
         applyPointsToActive(currentSector.value * count)
         setStatus(`Есть ${count} шт. ${letter}. Начислено: ${currentSector.value * count}`)
       } else {
-        setStatus(`Есть ${count} шт. ${letter}.`) 
+        setStatus(`Есть ${count} шт. ${letter}.`)
       }
+      if (partyMode) playTone(720, 120)
     } else {
       setStatus(`Буквы ${letter} нет. Передай ход.`)
+      if (partyMode) playTone(220, 140)
     }
 
     setLetterInput('')
@@ -195,8 +223,16 @@ export default function App() {
       const letters = [...new Set(answer.replace(/\s+/g, '').split(''))]
       setOpenedLetters(letters)
       setStatus('СЛОВО УГАДАНО! 🎉')
+      setCelebrate(true)
+      if (partyMode) {
+        playTone(660, 100)
+        setTimeout(() => playTone(880, 130), 120)
+        setTimeout(() => playTone(1040, 160), 280)
+      }
+      setTimeout(() => setCelebrate(false), 1400)
     } else {
       setStatus('Неверное слово. Передай ход.')
+      if (partyMode) playTone(220, 160)
     }
 
     setWordInput('')
@@ -315,6 +351,9 @@ export default function App() {
           <button className="ghost" onClick={() => setBigBoardMode((v) => !v)}>
             {bigBoardMode ? 'Обычное табло' : 'Big Board'}
           </button>
+          <button className="ghost" onClick={() => setPartyMode((v) => !v)}>
+            {partyMode ? 'Праздничный режим: ON' : 'Праздничный режим: OFF'}
+          </button>
           <button className="ghost" onClick={() => setShowHotkeys((v) => !v)}>
             {showHotkeys ? 'Скрыть hotkeys' : 'Показать hotkeys'}
           </button>
@@ -348,7 +387,7 @@ export default function App() {
       )}
 
       <main className={`layout ${screenMode ? 'layoutScreen' : ''}`}>
-        <section className="boardCard">
+        <section className={`boardCard ${celebrate ? 'celebrate' : ''}`}>
           <div className="boardHeader">
             <div>
               <div className="label">Тема</div>
@@ -382,6 +421,7 @@ export default function App() {
             </>
           )}
 
+          {celebrate && <div className="confetti">🎉 🎊 ✨</div>}
           <div className={`boardGrid ${bigBoardMode ? 'boardGridBig' : ''}`}>
             {masked.map((ch, i) =>
               ch === ' ' ? (

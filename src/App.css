@@ -85,6 +85,22 @@
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
+.boardCard.celebrate {
+  box-shadow: 0 0 0 2px #f59e0b inset, 0 10px 30px rgba(245, 158, 11, 0.35);
+}
+
+.confetti {
+  font-size: 24px;
+  text-align: center;
+  margin-bottom: 8px;
+  animation: pop 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes pop {
+  from { transform: translateY(0); opacity: 0.8; }
+  to { transform: translateY(-3px); opacity: 1; }
+}
+
 .boardHeader {
   display: flex;
   justify-content: space-between;

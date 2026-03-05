@@ -56,6 +56,7 @@ export default function App() {
   const [letterInput, setLetterInput] = useState('')
   const [wordInput, setWordInput] = useState('')
   const [status, setStatus] = useState('Готово к игре')
+  const [screenMode, setScreenMode] = useState(false)
 
   const masked = useMemo(() => {
     return phrase.split('').map((ch) => {
@@ -258,10 +259,15 @@ export default function App() {
     <div className="page">
       <header className="topbar">
         <h1>Поле Чудес — студия ведущего</h1>
-        <span className="step">Шаг 3/6: барабан + буквы/слово + ручной контроль очков</span>
+        <div className="topbarActions">
+          <span className="step">Шаг 4/6: screen mode для стрима</span>
+          <button className="ghost" onClick={() => setScreenMode((v) => !v)}>
+            {screenMode ? 'Выйти из Screen Mode' : 'Screen Mode'}
+          </button>
+        </div>
       </header>
 
-      <section className="turnCard">
+      {!screenMode && <section className="turnCard">
         <div>
           <div className="label">Сейчас ходит</div>
           <strong>{activePlayer ? `${activePlayer.avatar} ${activePlayer.name}` : 'Игрок не выбран'}</strong>
@@ -270,9 +276,9 @@ export default function App() {
           <button className="ghost" onClick={nextPlayer}>Следующий игрок (N)</button>
           <button onClick={spinWheel} disabled={isSpinning}>{isSpinning ? 'Крутим...' : 'Крутить барабан (Space)'}</button>
         </div>
-      </section>
+      </section>}
 
-      <main className="layout">
+      <main className={`layout ${screenMode ? 'layoutScreen' : ''}`}>
         <section className="boardCard">
           <div className="boardHeader">
             <div>
@@ -285,15 +291,19 @@ export default function App() {
             </div>
           </div>
 
-          <div className="hostSetup">
-            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Категория" />
-            <input value={phrase} onChange={(e) => setPhrase(e.target.value.toUpperCase())} placeholder="Фраза" />
-            <button className="ghost" onClick={() => setShowAnswer((v) => !v)}>
-              {showAnswer ? 'Скрыть ответ' : 'Показать ответ ведущему'}
-            </button>
-          </div>
+          {!screenMode && (
+            <>
+              <div className="hostSetup">
+                <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Категория" />
+                <input value={phrase} onChange={(e) => setPhrase(e.target.value.toUpperCase())} placeholder="Фраза" />
+                <button className="ghost" onClick={() => setShowAnswer((v) => !v)}>
+                  {showAnswer ? 'Скрыть ответ' : 'Показать ответ ведущему'}
+                </button>
+              </div>
 
-          {showAnswer && <div className="answerPreview">Ответ: {phrase}</div>}
+              {showAnswer && <div className="answerPreview">Ответ: {phrase}</div>}
+            </>
+          )}
 
           <div className="boardGrid">
             {masked.map((ch, i) =>
@@ -305,60 +315,66 @@ export default function App() {
             )}
           </div>
 
-          <div className="guessCard">
-            <div className="guessRow">
-              <input
-                placeholder="Буква"
-                value={letterInput}
-                onChange={(e) => setLetterInput(e.target.value.slice(0, 1))}
-              />
-              <button onClick={guessLetter}>Открыть букву</button>
-              <input
-                placeholder="Слово целиком"
-                value={wordInput}
-                onChange={(e) => setWordInput(e.target.value)}
-              />
-              <button onClick={guessWord}>Проверить слово</button>
-              <button className="ghost" onClick={resetRound}>Новый раунд</button>
-            </div>
-            <div className="usedLetters">Были буквы: {usedLetters.join(', ') || '—'}</div>
-            <div className="status">Статус: {status}</div>
-          </div>
-
-          <div className="wheelCard">
-            <div className="wheelHeader">
-              <h2>Барабан ведущего</h2>
-              <button onClick={spinWheel} disabled={isSpinning}>
-                {isSpinning ? 'Крутим...' : 'Крутить барабан'}
-              </button>
-            </div>
-
-            <div className="wheelStrip">
-              {SECTORS.map((s, i) => (
-                <div key={`${s.label}-${i}`} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
-                  {s.label}
+          {!screenMode && (
+            <>
+              <div className="guessCard">
+                <div className="guessRow">
+                  <input
+                    placeholder="Буква"
+                    value={letterInput}
+                    onChange={(e) => setLetterInput(e.target.value.slice(0, 1))}
+                  />
+                  <button onClick={guessLetter}>Открыть букву</button>
+                  <input
+                    placeholder="Слово целиком"
+                    value={wordInput}
+                    onChange={(e) => setWordInput(e.target.value)}
+                  />
+                  <button onClick={guessWord}>Проверить слово</button>
+                  <button className="ghost" onClick={resetRound}>Новый раунд</button>
                 </div>
-              ))}
-            </div>
+                <div className="usedLetters">Были буквы: {usedLetters.join(', ') || '—'}</div>
+                <div className="status">Статус: {status}</div>
+              </div>
 
-            <div className="wheelResult">
-              <strong>Результат: </strong>
-              {currentSector ? currentSector.label : '—'}
-            </div>
-          </div>
+              <div className="wheelCard">
+                <div className="wheelHeader">
+                  <h2>Барабан ведущего</h2>
+                  <button onClick={spinWheel} disabled={isSpinning}>
+                    {isSpinning ? 'Крутим...' : 'Крутить барабан'}
+                  </button>
+                </div>
+
+                <div className="wheelStrip">
+                  {SECTORS.map((s, i) => (
+                    <div key={`${s.label}-${i}`} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
+                      {s.label}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="wheelResult">
+                  <strong>Результат: </strong>
+                  {currentSector ? currentSector.label : '—'}
+                </div>
+              </div>
+            </>
+          )}
         </section>
 
         <aside className="panel">
-          <div className="card">
-            <h2>Добавить игрока</h2>
-            <div className="formRow">
-              <input placeholder="Имя игрока" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />
-              <select value={newAvatar} onChange={(e) => setNewAvatar(e.target.value)}>
-                {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
-              </select>
-              <button onClick={addPlayer}>Добавить</button>
+          {!screenMode && (
+            <div className="card">
+              <h2>Добавить игрока</h2>
+              <div className="formRow">
+                <input placeholder="Имя игрока" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />
+                <select value={newAvatar} onChange={(e) => setNewAvatar(e.target.value)}>
+                  {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
+                </select>
+                <button onClick={addPlayer}>Добавить</button>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="card">
             <h2>Игроки</h2>
@@ -378,20 +394,24 @@ export default function App() {
                         Очки
                         <input type="number" value={p.score} onChange={(e) => updateScore(p.id, Number(e.target.value || 0))} />
                       </label>
-                      <div className="quickScoreRow">
-                        <button className="mini" onClick={() => adjustScore(p.id, 100)}>+100</button>
-                        <button className="mini" onClick={() => adjustScore(p.id, 200)}>+200</button>
-                        <button className="mini" onClick={() => adjustScore(p.id, -100)}>-100</button>
-                        <button className="mini ghost" onClick={() => resetScore(p.id)}>Сброс</button>
-                      </div>
+                      {!screenMode && (
+                        <div className="quickScoreRow">
+                          <button className="mini" onClick={() => adjustScore(p.id, 100)}>+100</button>
+                          <button className="mini" onClick={() => adjustScore(p.id, 200)}>+200</button>
+                          <button className="mini" onClick={() => adjustScore(p.id, -100)}>-100</button>
+                          <button className="mini ghost" onClick={() => resetScore(p.id)}>Сброс</button>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="playerActions">
-                      <select value={p.avatar} onChange={(e) => updateAvatar(p.id, e.target.value)}>
-                        {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
-                      </select>
-                      <button className="danger" onClick={() => removePlayer(p.id)}>Удалить</button>
-                    </div>
+                    {!screenMode && (
+                      <div className="playerActions">
+                        <select value={p.avatar} onChange={(e) => updateAvatar(p.id, e.target.value)}>
+                          {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
+                        </select>
+                        <button className="danger" onClick={() => removePlayer(p.id)}>Удалить</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

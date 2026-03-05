@@ -14,7 +14,9 @@ type Sector =
   | { type: 'lose_turn'; label: string }
 
 const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐨', '🐸', '🐵', '🐙', '🐧', '🐺', '🐻', '🐱']
-const DEMO_PHRASE = 'ПОЛЕ ЧУДЕС'
+const DEFAULT_PHRASE = 'ПОЛЕ ЧУДЕС'
+const DEFAULT_CATEGORY = 'Демо раунд'
+const STORAGE_KEY = 'pole-chudes-state-v1'
 
 const SECTORS: Sector[] = [
   { type: 'points', value: 100, label: '100' },
@@ -45,6 +47,10 @@ export default function App() {
   const [currentSector, setCurrentSector] = useState<Sector | null>(null)
   const [spinIndex, setSpinIndex] = useState(0)
 
+  const [phrase, setPhrase] = useState(DEFAULT_PHRASE)
+  const [category, setCategory] = useState(DEFAULT_CATEGORY)
+  const [showAnswer, setShowAnswer] = useState(false)
+
   const [openedLetters, setOpenedLetters] = useState<string[]>([])
   const [usedLetters, setUsedLetters] = useState<string[]>([])
   const [letterInput, setLetterInput] = useState('')
@@ -52,7 +58,7 @@ export default function App() {
   const [status, setStatus] = useState('Готово к игре')
 
   const masked = useMemo(() => {
-    return DEMO_PHRASE.split('').map((ch) => {
+    return phrase.split('').map((ch) => {
       if (ch === ' ') return ' '
       return openedLetters.includes(normalizeLetter(ch)) ? ch : '_'
     })
@@ -151,8 +157,8 @@ export default function App() {
 
     setUsedLetters((prev) => [...prev, letter])
 
-    const phrase = DEMO_PHRASE.toUpperCase().replace('Ё', 'Е')
-    const count = [...phrase].filter((ch) => ch === letter).length
+    const normalizedPhrase = phrase.toUpperCase().replace('Ё', 'Е')
+    const count = [...normalizedPhrase].filter((ch) => ch === letter).length
 
     if (count > 0) {
       setOpenedLetters((prev) => [...new Set([...prev, letter])])
@@ -172,7 +178,7 @@ export default function App() {
 
   const guessWord = () => {
     const guess = wordInput.trim().toUpperCase().replace('Ё', 'Е')
-    const answer = DEMO_PHRASE.toUpperCase().replace('Ё', 'Е')
+    const answer = phrase.toUpperCase().replace('Ё', 'Е')
 
     if (!guess) return
 
@@ -216,6 +222,38 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isSpinning, players, activePlayerId])
 
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return
+    try {
+      const data = JSON.parse(raw) as {
+        players?: Player[]
+        activePlayerId?: string | null
+        phrase?: string
+        category?: string
+        openedLetters?: string[]
+        usedLetters?: string[]
+      }
+
+      if (data.players) setPlayers(data.players)
+      if (data.activePlayerId !== undefined) setActivePlayerId(data.activePlayerId)
+      if (data.phrase) setPhrase(data.phrase)
+      if (data.category) setCategory(data.category)
+      if (data.openedLetters) setOpenedLetters(data.openedLetters)
+      if (data.usedLetters) setUsedLetters(data.usedLetters)
+      setStatus('Состояние восстановлено')
+    } catch {
+      // ignore broken storage
+    }
+  }, [])
+
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ players, activePlayerId, phrase, category, openedLetters, usedLetters }),
+    )
+  }, [players, activePlayerId, phrase, category, openedLetters, usedLetters])
+
   return (
     <div className="page">
       <header className="topbar">
@@ -239,13 +277,23 @@ export default function App() {
           <div className="boardHeader">
             <div>
               <div className="label">Тема</div>
-              <strong>Демо раунд</strong>
+              <strong>{category}</strong>
             </div>
             <div>
               <div className="label">Фраза</div>
-              <strong>{DEMO_PHRASE.length} символов</strong>
+              <strong>{phrase.length} символов</strong>
             </div>
           </div>
+
+          <div className="hostSetup">
+            <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Категория" />
+            <input value={phrase} onChange={(e) => setPhrase(e.target.value.toUpperCase())} placeholder="Фраза" />
+            <button className="ghost" onClick={() => setShowAnswer((v) => !v)}>
+              {showAnswer ? 'Скрыть ответ' : 'Показать ответ ведущему'}
+            </button>
+          </div>
+
+          {showAnswer && <div className="answerPreview">Ответ: {phrase}</div>}
 
           <div className="boardGrid">
             {masked.map((ch, i) =>

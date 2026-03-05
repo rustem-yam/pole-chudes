@@ -43,6 +43,28 @@ function normalizeLetter(v: string) {
   return v.trim().toUpperCase().replace('Ё', 'Е')
 }
 
+type PersistedState = {
+  players?: Player[]
+  activePlayerId?: string | null
+  phrase?: string
+  category?: string
+  roundTitle?: string
+  hint?: string
+  openedLetters?: string[]
+  usedLetters?: string[]
+}
+
+function readPersistedState(): PersistedState | null {
+  if (typeof window === 'undefined') return null
+  const raw = window.localStorage.getItem(STORAGE_KEY)
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as PersistedState
+  } catch {
+    return null
+  }
+}
+
 function playTone(freq: number, duration = 120) {
   try {
     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
@@ -66,8 +88,10 @@ function playTone(freq: number, duration = 120) {
 }
 
 export default function App() {
-  const [players, setPlayers] = useState<Player[]>([])
-  const [activePlayerId, setActivePlayerId] = useState<string | null>(null)
+  const [persisted] = useState<PersistedState | null>(() => readPersistedState())
+
+  const [players, setPlayers] = useState<Player[]>(persisted?.players ?? [])
+  const [activePlayerId, setActivePlayerId] = useState<string | null>(persisted?.activePlayerId ?? null)
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newAvatar, setNewAvatar] = useState(AVATARS[0])
 
@@ -75,14 +99,14 @@ export default function App() {
   const [currentSector, setCurrentSector] = useState<Sector | null>(null)
   const [spinIndex, setSpinIndex] = useState(0)
 
-  const [phrase, setPhrase] = useState(DEFAULT_PHRASE)
-  const [category, setCategory] = useState(DEFAULT_CATEGORY)
-  const [roundTitle, setRoundTitle] = useState('Раунд 1')
-  const [hint, setHint] = useState('')
+  const [phrase, setPhrase] = useState(persisted?.phrase ?? DEFAULT_PHRASE)
+  const [category, setCategory] = useState(persisted?.category ?? DEFAULT_CATEGORY)
+  const [roundTitle, setRoundTitle] = useState(persisted?.roundTitle ?? 'Раунд 1')
+  const [hint, setHint] = useState(persisted?.hint ?? '')
   const [showAnswer, setShowAnswer] = useState(false)
 
-  const [openedLetters, setOpenedLetters] = useState<string[]>([])
-  const [usedLetters, setUsedLetters] = useState<string[]>([])
+  const [openedLetters, setOpenedLetters] = useState<string[]>(persisted?.openedLetters ?? [])
+  const [usedLetters, setUsedLetters] = useState<string[]>(persisted?.usedLetters ?? [])
   const [letterInput, setLetterInput] = useState('')
   const [wordInput, setWordInput] = useState('')
   const [status, setStatus] = useState('Готово к игре')
@@ -91,7 +115,6 @@ export default function App() {
   const [bigBoardMode, setBigBoardMode] = useState(false)
   const [partyMode, setPartyMode] = useState(true)
   const [celebrate, setCelebrate] = useState(false)
-  const [hydrated, setHydrated] = useState(false)
 
   const masked = useMemo(() => {
     return phrase.split('').map((ch) => {
@@ -321,47 +344,11 @@ export default function App() {
   }, [isSpinning, players, activePlayerId])
 
   useEffect(() => {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) {
-      setHydrated(true)
-      return
-    }
-    try {
-      const data = JSON.parse(raw) as {
-        players?: Player[]
-        activePlayerId?: string | null
-        phrase?: string
-        category?: string
-        roundTitle?: string
-        hint?: string
-        openedLetters?: string[]
-        usedLetters?: string[]
-      }
-
-      if (data.players) setPlayers(data.players)
-      if (data.activePlayerId !== undefined) setActivePlayerId(data.activePlayerId)
-      if (data.phrase) setPhrase(data.phrase)
-      if (data.category) setCategory(data.category)
-      if (data.roundTitle) setRoundTitle(data.roundTitle)
-      if (data.hint !== undefined) setHint(data.hint)
-      if (data.openedLetters) setOpenedLetters(data.openedLetters)
-      if (data.usedLetters) setUsedLetters(data.usedLetters)
-      setStatus('Состояние восстановлено')
-    } catch {
-      // ignore broken storage
-    } finally {
-      setHydrated(true)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!hydrated) return
-
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify({ players, activePlayerId, phrase, category, roundTitle, hint, openedLetters, usedLetters }),
     )
-  }, [hydrated, players, activePlayerId, phrase, category, roundTitle, hint, openedLetters, usedLetters])
+  }, [players, activePlayerId, phrase, category, roundTitle, hint, openedLetters, usedLetters])
 
   return (
     <div className="page">

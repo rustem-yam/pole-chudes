@@ -15,14 +15,8 @@ type Sector =
 
 const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐨', '🐸', '🐵', '🐙', '🐧', '🐺', '🐻', '🐱']
 const DEFAULT_PHRASE = 'ПОЛЕ ЧУДЕС'
-const DEFAULT_CATEGORY = 'Демо раунд'
 const STORAGE_KEY = 'pole-chudes-state-v1'
 
-const PHRASE_PRESETS = [
-  { round: 'Раунд 1', category: 'Кино', hint: 'Советская киноклассика', phrase: 'БРИЛЛИАНТОВАЯ РУКА' },
-  { round: 'Раунд 2', category: 'Мультфильм', hint: 'Музыкальная сказка', phrase: 'БРЕМЕНСКИЕ МУЗЫКАНТЫ' },
-  { round: 'Раунд 3', category: 'Пословица', hint: 'О внимательности', phrase: 'СЕМЬ РАЗ ОТМЕРЬ ОДИН РАЗ ОТРЕЖЬ' },
-]
 
 const SECTORS: Sector[] = [
   { type: 'points', value: 100, label: '100' },
@@ -47,7 +41,6 @@ type PersistedState = {
   players?: Player[]
   activePlayerId?: string | null
   phrase?: string
-  category?: string
   roundTitle?: string
   hint?: string
   openedLetters?: string[]
@@ -100,7 +93,6 @@ export default function App() {
   const [spinIndex, setSpinIndex] = useState(0)
 
   const [phrase, setPhrase] = useState(persisted?.phrase ?? DEFAULT_PHRASE)
-  const [category, setCategory] = useState(persisted?.category ?? DEFAULT_CATEGORY)
   const [roundTitle, setRoundTitle] = useState(persisted?.roundTitle ?? 'Раунд 1')
   const [hint, setHint] = useState(persisted?.hint ?? '')
   const [showAnswer, setShowAnswer] = useState(false)
@@ -273,16 +265,7 @@ export default function App() {
     setStatus('Новый раунд готов')
   }
 
-  const quickStartRound = (
-    nextRound?: string,
-    nextCategory?: string,
-    nextHint?: string,
-    nextPhrase?: string,
-  ) => {
-    if (nextRound) setRoundTitle(nextRound)
-    if (nextCategory) setCategory(nextCategory)
-    if (nextHint !== undefined) setHint(nextHint)
-    if (nextPhrase) setPhrase(nextPhrase)
+  const quickStartRound = () => {
     resetRound()
     setStatus('Раунд запущен')
   }
@@ -346,9 +329,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ players, activePlayerId, phrase, category, roundTitle, hint, openedLetters, usedLetters }),
+      JSON.stringify({ players, activePlayerId, phrase, roundTitle, hint, openedLetters, usedLetters }),
     )
-  }, [players, activePlayerId, phrase, category, roundTitle, hint, openedLetters, usedLetters])
+  }, [players, activePlayerId, phrase, roundTitle, hint, openedLetters, usedLetters])
 
   return (
     <div className="page">
@@ -365,7 +348,7 @@ export default function App() {
           <button className="ghost" onClick={() => setShowHotkeys((v) => !v)}>
             {showHotkeys ? 'Скрыть hotkeys' : 'Показать hotkeys'}
           </button>
-          <button className="ghost" onClick={() => quickStartRound(roundTitle, category, hint, phrase)}>Быстрый старт раунда</button>
+          <button className="ghost" onClick={quickStartRound}>Быстрый старт раунда</button>
           <button className="ghost" onClick={() => void openFullscreen()}>Fullscreen (F)</button>
           <button className="ghost" onClick={() => setScreenMode((v) => !v)}>
             {screenMode ? 'Выйти из Screen Mode' : 'Screen Mode'}
@@ -402,8 +385,8 @@ export default function App() {
               <strong>{roundTitle}</strong>
             </div>
             <div>
-              <div className="label">Тема</div>
-              <strong>{category}</strong>
+              <div className="label">Вопрос</div>
+              <strong>{hint || '—'}</strong>
             </div>
             <div>
               <div className="label">Фраза</div>
@@ -415,9 +398,8 @@ export default function App() {
             <>
               <div className="hostSetup hostSetupWide">
                 <input value={roundTitle} onChange={(e) => setRoundTitle(e.target.value)} placeholder="Название раунда" />
-                <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Категория" />
-                <input value={hint} onChange={(e) => setHint(e.target.value)} placeholder="Вопрос / подсказка" />
-                <input value={phrase} onChange={(e) => setPhrase(e.target.value.toUpperCase())} placeholder="Загаданная фраза" />
+                <input value={hint} onChange={(e) => setHint(e.target.value)} placeholder="Вопрос" />
+                <input value={phrase} onChange={(e) => setPhrase(e.target.value.toUpperCase())} placeholder="Загаданное слово / фраза" />
                 <button className="ghost" onClick={() => setShowAnswer((v) => !v)}>
                   {showAnswer ? 'Скрыть ответ' : 'Показать ответ ведущему'}
                 </button>
@@ -426,17 +408,6 @@ export default function App() {
               {hint && <div className="hintPreview">Подсказка: {hint}</div>}
               {showAnswer && <div className="answerPreview">Ответ: {phrase}</div>}
 
-              <div className="presetRow">
-                {PHRASE_PRESETS.map((p) => (
-                  <button
-                    key={p.phrase}
-                    className="ghost"
-                    onClick={() => quickStartRound(p.round, p.category, p.hint, p.phrase)}
-                  >
-                    {p.round}: {p.category}
-                  </button>
-                ))}
-              </div>
             </>
           )}
 

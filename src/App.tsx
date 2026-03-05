@@ -80,6 +80,16 @@ export default function App() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, score: value } : p)))
   }
 
+  const adjustScore = (id: string, delta: number) => {
+    setPlayers((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, score: Math.max(0, p.score + delta) } : p)),
+    )
+  }
+
+  const resetScore = (id: string) => {
+    updateScore(id, 0)
+  }
+
   const updateAvatar = (id: string, avatar: string) => {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, avatar } : p)))
   }
@@ -275,6 +285,12 @@ export default function App() {
                         Очки
                         <input type="number" value={p.score} onChange={(e) => updateScore(p.id, Number(e.target.value || 0))} />
                       </label>
+                      <div className="quickScoreRow">
+                        <button className="mini" onClick={() => adjustScore(p.id, 100)}>+100</button>
+                        <button className="mini" onClick={() => adjustScore(p.id, 200)}>+200</button>
+                        <button className="mini" onClick={() => adjustScore(p.id, -100)}>-100</button>
+                        <button className="mini ghost" onClick={() => resetScore(p.id)}>Сброс</button>
+                      </div>
                     </div>
 
                     <div className="playerActions">

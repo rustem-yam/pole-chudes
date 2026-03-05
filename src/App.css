@@ -240,6 +240,18 @@ button.ghost {
   width: 100px;
 }
 
+.quickScoreRow {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+button.mini {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
 .playerActions {
   display: grid;
   gap: 6px;

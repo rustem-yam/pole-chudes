@@ -142,11 +142,16 @@
   color: #78350f;
 }
 
-.presetRow {
+.roundsRow {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+}
+
+.activeRoundBtn {
+  background: #dbeafe !important;
+  border-color: #93c5fd !important;
 }
 
 .boardGrid {

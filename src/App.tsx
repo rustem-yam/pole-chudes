@@ -13,10 +13,23 @@ type Sector =
   | { type: 'bankrupt'; label: string }
   | { type: 'lose_turn'; label: string }
 
+type RoundItem = {
+  id: string
+  title: string
+  hint: string
+  phrase: string
+}
+
 const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐨', '🐸', '🐵', '🐙', '🐧', '🐺', '🐻', '🐱']
 const DEFAULT_PHRASE = 'ПОЛЕ ЧУДЕС'
 const STORAGE_KEY = 'pole-chudes-state-v1'
 
+const DEFAULT_ROUND: RoundItem = {
+  id: 'round-1',
+  title: 'Раунд 1',
+  hint: '',
+  phrase: DEFAULT_PHRASE,
+}
 
 const SECTORS: Sector[] = [
   { type: 'points', value: 100, label: '100' },
@@ -40,9 +53,8 @@ function normalizeLetter(v: string) {
 type PersistedState = {
   players?: Player[]
   activePlayerId?: string | null
-  phrase?: string
-  roundTitle?: string
-  hint?: string
+  rounds?: RoundItem[]
+  activeRoundId?: string | null
   openedLetters?: string[]
   usedLetters?: string[]
 }
@@ -92,9 +104,12 @@ export default function App() {
   const [currentSector, setCurrentSector] = useState<Sector | null>(null)
   const [spinIndex, setSpinIndex] = useState(0)
 
-  const [phrase, setPhrase] = useState(persisted?.phrase ?? DEFAULT_PHRASE)
-  const [roundTitle, setRoundTitle] = useState(persisted?.roundTitle ?? 'Раунд 1')
-  const [hint, setHint] = useState(persisted?.hint ?? '')
+  const [rounds, setRounds] = useState<RoundItem[]>(
+    persisted?.rounds && persisted.rounds.length > 0 ? persisted.rounds : [DEFAULT_ROUND],
+  )
+  const [activeRoundId, setActiveRoundId] = useState<string | null>(
+    persisted?.activeRoundId ?? (persisted?.rounds?.[0]?.id ?? DEFAULT_ROUND.id),
+  )
   const [showAnswer, setShowAnswer] = useState(false)
 
   const [openedLetters, setOpenedLetters] = useState<string[]>(persisted?.openedLetters ?? [])
@@ -108,14 +123,47 @@ export default function App() {
   const [partyMode, setPartyMode] = useState(true)
   const [celebrate, setCelebrate] = useState(false)
 
+  const activePlayer = players.find((p) => p.id === activePlayerId) ?? null
+  const activeRound = rounds.find((r) => r.id === activeRoundId) ?? rounds[0] ?? DEFAULT_ROUND
+  const phrase = activeRound?.phrase ?? ''
+  const roundTitle = activeRound?.title ?? ''
+  const hint = activeRound?.hint ?? ''
+
   const masked = useMemo(() => {
     return phrase.split('').map((ch) => {
       if (ch === ' ') return ' '
       return openedLetters.includes(normalizeLetter(ch)) ? ch : '_'
     })
-  }, [openedLetters])
+  }, [openedLetters, phrase])
 
-  const activePlayer = players.find((p) => p.id === activePlayerId) ?? null
+  const patchActiveRound = (patch: Partial<RoundItem>) => {
+    setRounds((prev) => prev.map((r) => (r.id === activeRound.id ? { ...r, ...patch } : r)))
+  }
+
+  const addRound = () => {
+    const nextNumber = rounds.length + 1
+    const next: RoundItem = {
+      id: uid(),
+      title: `Раунд ${nextNumber}`,
+      hint: '',
+      phrase: '',
+    }
+    setRounds((prev) => [...prev, next])
+    setActiveRoundId(next.id)
+    setOpenedLetters([])
+    setUsedLetters([])
+    setStatus(`Создан ${next.title}`)
+  }
+
+  const nextRound = () => {
+    if (rounds.length === 0) return
+    const idx = rounds.findIndex((r) => r.id === activeRound.id)
+    const nextIdx = idx === -1 ? 0 : (idx + 1) % rounds.length
+    setActiveRoundId(rounds[nextIdx].id)
+    setOpenedLetters([])
+    setUsedLetters([])
+    setStatus(`Переключено: ${rounds[nextIdx].title}`)
+  }
 
   const nextPlayer = () => {
     if (players.length === 0) return
@@ -329,9 +377,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ players, activePlayerId, phrase, roundTitle, hint, openedLetters, usedLetters }),
+      JSON.stringify({ players, activePlayerId, rounds, activeRoundId, openedLetters, usedLetters }),
     )
-  }, [players, activePlayerId, phrase, roundTitle, hint, openedLetters, usedLetters])
+  }, [players, activePlayerId, rounds, activeRoundId, openedLetters, usedLetters])
 
   return (
     <div className="page">
@@ -348,6 +396,8 @@ export default function App() {
           <button className="ghost" onClick={() => setShowHotkeys((v) => !v)}>
             {showHotkeys ? 'Скрыть hotkeys' : 'Показать hotkeys'}
           </button>
+          <button className="ghost" onClick={addRound}>+ Раунд</button>
+          <button className="ghost" onClick={nextRound}>Следующий раунд</button>
           <button className="ghost" onClick={quickStartRound}>Быстрый старт раунда</button>
           <button className="ghost" onClick={() => void openFullscreen()}>Fullscreen (F)</button>
           <button className="ghost" onClick={() => setScreenMode((v) => !v)}>
@@ -397,12 +447,28 @@ export default function App() {
           {!screenMode && (
             <>
               <div className="hostSetup hostSetupWide">
-                <input value={roundTitle} onChange={(e) => setRoundTitle(e.target.value)} placeholder="Название раунда" />
-                <input value={hint} onChange={(e) => setHint(e.target.value)} placeholder="Вопрос" />
-                <input value={phrase} onChange={(e) => setPhrase(e.target.value.toUpperCase())} placeholder="Загаданное слово / фраза" />
+                <input value={roundTitle} onChange={(e) => patchActiveRound({ title: e.target.value })} placeholder="Название раунда" />
+                <input value={hint} onChange={(e) => patchActiveRound({ hint: e.target.value })} placeholder="Вопрос" />
+                <input value={phrase} onChange={(e) => patchActiveRound({ phrase: e.target.value.toUpperCase() })} placeholder="Загаданное слово / фраза" />
                 <button className="ghost" onClick={() => setShowAnswer((v) => !v)}>
                   {showAnswer ? 'Скрыть ответ' : 'Показать ответ ведущему'}
                 </button>
+              </div>
+
+              <div className="roundsRow">
+                {rounds.map((r) => (
+                  <button
+                    key={r.id}
+                    className={`ghost ${r.id === activeRound.id ? 'activeRoundBtn' : ''}`}
+                    onClick={() => {
+                      setActiveRoundId(r.id)
+                      setOpenedLetters([])
+                      setUsedLetters([])
+                    }}
+                  >
+                    {r.title || 'Без названия'}
+                  </button>
+                ))}
               </div>
 
               {hint && <div className="hintPreview">Подсказка: {hint}</div>}

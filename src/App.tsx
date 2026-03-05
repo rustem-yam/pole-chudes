@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import './App.css'
 
 type Player = {
@@ -462,12 +462,20 @@ export default function App() {
               </button>
             </div>
 
-            <div className="wheelStrip">
-              {SECTORS.map((s, i) => (
-                <div key={`${s.label}-${i}`} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
-                  {s.label}
-                </div>
-              ))}
+            <div className="wheelCircleWrap">
+              <div className="wheelPointer">▼</div>
+              <div className="wheelCircle">
+                {SECTORS.map((s, i) => {
+                  const angle = (360 / SECTORS.length) * i
+                  const style = { transform: `rotate(${angle}deg) translateY(-120px)` } as CSSProperties
+                  return (
+                    <div key={`${s.label}-${i}`} style={style} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
+                      {s.label}
+                    </div>
+                  )
+                })}
+                <div className="wheelCenter">🎡</div>
+              </div>
             </div>
 
             <div className="wheelResult">

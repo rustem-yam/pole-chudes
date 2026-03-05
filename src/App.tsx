@@ -63,7 +63,7 @@ function uid() {
 }
 
 function normalizeLetter(v: string) {
-  return v.trim().toUpperCase().replace('Ё', 'Е')
+  return v.trim().toUpperCase()
 }
 
 type PersistedState = {
@@ -435,7 +435,7 @@ export default function App() {
 
     setUsedLetters((prev) => [...prev, letter])
 
-    const normalizedPhrase = phrase.toUpperCase().replace('Ё', 'Е')
+    const normalizedPhrase = phrase.toUpperCase()
     const count = [...normalizedPhrase].filter((ch) => ch === letter).length
 
     if (count > 0) {
@@ -465,8 +465,8 @@ export default function App() {
   }
 
   const guessWord = () => {
-    const guess = wordInput.trim().toUpperCase().replace('Ё', 'Е')
-    const answer = phrase.toUpperCase().replace('Ё', 'Е')
+    const guess = wordInput.trim().toUpperCase()
+    const answer = phrase.toUpperCase()
 
     if (!guess) return
 

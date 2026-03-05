@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, useRef, type CSSProperties } from 'react'
 import './App.css'
+import yakunovichImg from './assets/yakubovich.jpg'
+import yakunovichSayImg from './assets/yakubovich-say.jpg'
+import natashaImg from './assets/natasha.png'
+import sashaImg from './assets/sasha.png'
+import ritaImg from './assets/rita.png'
+import katyaImg from './assets/katya.png'
+import wheelMusicSrc from './assets/wheel-music.m4a'
+import wrongGuessSrc from './assets/wrong-guess.m4a'
+import rightGuessSrc from './assets/right-guess.m4a'
 
 type Player = {
   id: string
@@ -23,6 +32,13 @@ type RoundItem = {
 const AVATARS = ['🦊', '🐼', '🐯', '🦁', '🐨', '🐸', '🐵', '🐙', '🐧', '🐺', '🐻', '🐱']
 const DEFAULT_PHRASE = 'ПОЛЕ ЧУДЕС'
 const STORAGE_KEY = 'pole-chudes-state-v1'
+
+const DEFAULT_PLAYERS: Player[] = [
+  { id: 'player-natasha', name: 'Наташа', avatar: natashaImg, score: 0 },
+  { id: 'player-sasha', name: 'Саша', avatar: sashaImg, score: 0 },
+  { id: 'player-rita', name: 'Рита', avatar: ritaImg, score: 0 },
+  { id: 'player-katya', name: 'Катя', avatar: katyaImg, score: 0 },
+]
 
 const DEFAULT_ROUND: RoundItem = {
   id: 'round-1',
@@ -70,33 +86,37 @@ function readPersistedState(): PersistedState | null {
   }
 }
 
-function playTone(freq: number, duration = 120) {
-  try {
-    const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-    if (!Ctx) return
-    const ctx = new Ctx()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.frequency.value = freq
-    osc.type = 'triangle'
-    gain.gain.value = 0.02
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    osc.start()
-    setTimeout(() => {
-      osc.stop()
-      void ctx.close()
-    }, duration)
-  } catch {
-    // ignore audio issues
-  }
-}
+// function playTone(freq: number, duration = 120) {
+//   try {
+//     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+//     if (!Ctx) return
+//     const ctx = new Ctx()
+//     const osc = ctx.createOscillator()
+//     const gain = ctx.createGain()
+//     osc.frequency.value = freq
+//     osc.type = 'triangle'
+//     gain.gain.value = 0.02
+//     osc.connect(gain)
+//     gain.connect(ctx.destination)
+//     osc.start()
+//     setTimeout(() => {
+//       osc.stop()
+//       void ctx.close()
+//     }, duration)
+//   } catch {
+//     // ignore audio issues
+//   }
+// }
 
 export default function App() {
   const [persisted] = useState<PersistedState | null>(() => readPersistedState())
 
-  const [players, setPlayers] = useState<Player[]>(persisted?.players ?? [])
-  const [activePlayerId, setActivePlayerId] = useState<string | null>(persisted?.activePlayerId ?? null)
+  const [players, setPlayers] = useState<Player[]>(
+    (persisted?.players && persisted.players.length > 0) ? persisted.players : DEFAULT_PLAYERS
+  )
+  const [activePlayerId, setActivePlayerId] = useState<string | null>(
+    persisted?.activePlayerId ?? DEFAULT_PLAYERS[0]?.id ?? null
+  )
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newAvatar, setNewAvatar] = useState(AVATARS[0])
 
@@ -111,6 +131,7 @@ export default function App() {
     persisted?.activeRoundId ?? (persisted?.rounds?.[0]?.id ?? DEFAULT_ROUND.id),
   )
   const [showAnswer, setShowAnswer] = useState(false)
+  const [showPhraseInput, setShowPhraseInput] = useState(false)
 
   const [openedLetters, setOpenedLetters] = useState<string[]>(persisted?.openedLetters ?? [])
   const [usedLetters, setUsedLetters] = useState<string[]>(persisted?.usedLetters ?? [])
@@ -122,6 +143,13 @@ export default function App() {
   const [bigBoardMode, setBigBoardMode] = useState(false)
   const [partyMode, setPartyMode] = useState(true)
   const [celebrate, setCelebrate] = useState(false)
+  const [yakubovichSpeech, setYakubovichSpeech] = useState('')
+  const [showYakubovichSpeech, setShowYakubovichSpeech] = useState(false)
+
+  const yakubovichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const wheelMusicRef = useRef<HTMLAudioElement | null>(null)
+  const wrongGuessAudioRef = useRef<HTMLAudioElement | null>(null)
+  const rightGuessAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const activePlayer = players.find((p) => p.id === activePlayerId) ?? null
   const activeRound = rounds.find((r) => r.id === activeRoundId) ?? rounds[0] ?? DEFAULT_ROUND
@@ -135,6 +163,20 @@ export default function App() {
       return openedLetters.includes(normalizeLetter(ch)) ? ch : '_'
     })
   }, [openedLetters, phrase])
+
+  const playAudio = (audio: HTMLAudioElement | null) => {
+    if (!audio) return
+    audio.currentTime = 0
+    void audio.play().catch(() => {
+      // ignore autoplay/media errors
+    })
+  }
+
+  const stopAudio = (audio: HTMLAudioElement | null) => {
+    if (!audio) return
+    audio.pause()
+    audio.currentTime = 0
+  }
 
   const patchActiveRound = (patch: Partial<RoundItem>) => {
     setRounds((prev) => prev.map((r) => (r.id === activeRound.id ? { ...r, ...patch } : r)))
@@ -168,13 +210,17 @@ export default function App() {
   const nextPlayer = () => {
     if (players.length === 0) return
     if (!activePlayerId) {
-      setActivePlayerId(players[0].id)
+      const firstPlayer = players[0]
+      setActivePlayerId(firstPlayer.id)
+      showYakubovichMessage(getRandomPhraseForPlayer(NEXT_PLAYER_PHRASES, firstPlayer.name))
       return
     }
 
     const idx = players.findIndex((p) => p.id === activePlayerId)
     const nextIdx = idx === -1 ? 0 : (idx + 1) % players.length
-    setActivePlayerId(players[nextIdx].id)
+    const next = players[nextIdx]
+    setActivePlayerId(next.id)
+    showYakubovichMessage(getRandomPhraseForPlayer(NEXT_PLAYER_PHRASES, next.name))
   }
 
   const addPlayer = () => {
@@ -213,32 +259,163 @@ export default function App() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, avatar } : p)))
   }
 
+  const handleAvatarUpload = (playerId: string) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (file) {
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          const dataUrl = event.target?.result as string
+          updateAvatar(playerId, dataUrl)
+        }
+        reader.readAsDataURL(file)
+      }
+    }
+    input.click()
+  }
+
+  const showYakubovichMessage = (message: string) => {
+    if (yakubovichTimerRef.current) {
+      clearTimeout(yakubovichTimerRef.current)
+    }
+    setYakubovichSpeech(message)
+    setShowYakubovichSpeech(true)
+    yakubovichTimerRef.current = setTimeout(() => {
+      setShowYakubovichSpeech(false)
+    }, 5000)
+  }
+
+  const getRandomPhrase = (phrases: string[]): string => {
+    return phrases[Math.floor(Math.random() * phrases.length)]
+  }
+
+  const BANKRUPT_PHRASES = ['%s, вы банкрот!', '%s банкрот!', '%s, вы потеряли все!']
+  const LOSE_TURN_PHRASES = ['%s, пропускаете ход!', '%s, ход не ваш!', '%s, ход прошёл мимо!']
+  const CALL_LETTER_PHRASES = ['Называйте букву, %s!', '%s, отлично, называйте!', '%s, можете назвать букву или слово!']
+  const NEXT_PLAYER_PHRASES = ['%s, крутите барабан!', '%s, ваш ход, крутите!', '%s, барабан ждёт вас!']
+  const GUESSED_LETTER_PHRASES = ['%s, правильно!', '%s, есть такая буква!', '%s молодец!']
+  const MISSED_LETTER_PHRASES = ['%s, нет такой буквы!', '%s, не угадали!', '%s, такой буквы нет!']
+  const GUESSED_WORD_PHRASES = ['%s, отлично! Слово угадано!', '%s, браво! Правильный ответ!', '%s, восхитительно!']
+  const MISSED_WORD_PHRASES = ['%s, не то слово!', 'Неверно, %s!', '%s, к сожалению, неправильно!']
+
+  const formatPhrase = (template: string, playerName?: string): string => {
+    const name = playerName?.trim() || activePlayer?.name?.trim() || 'Игрок'
+    return template.replace(/%s/g, name)
+  }
+
+  const getRandomPhraseForPlayer = (phrases: string[], playerName?: string): string => {
+    return formatPhrase(getRandomPhrase(phrases), playerName)
+  }
+
+  const getRandomPhraseForActivePlayer = (phrases: string[]): string => {
+    return getRandomPhraseForPlayer(phrases)
+  }
+
   const spinWheel = () => {
     if (isSpinning) return
+    
+    // Clear previous Yakubovich message
+    if (yakubovichTimerRef.current) {
+      clearTimeout(yakubovichTimerRef.current)
+    }
+    setShowYakubovichSpeech(false)
+    
     setIsSpinning(true)
     setCurrentSector(null)
     setStatus('Крутим барабан...')
-    if (partyMode) playTone(420, 90)
+    if (partyMode) {
+      // playTone(420, 90)
+      playAudio(wheelMusicRef.current)
+    }
 
     const targetIndex = Math.floor(Math.random() * SECTORS.length)
     let ticks = 0
-    const totalTicks = 24 + targetIndex
+    let currentIndex = spinIndex
+    const totalTicks = 60 + targetIndex
 
-    const timer = setInterval(() => {
+    const spinStep = () => {
       ticks += 1
-      setSpinIndex((prev) => (prev + 1) % SECTORS.length)
+      currentIndex = (currentIndex + 1) % SECTORS.length
+      setSpinIndex(currentIndex)
 
-      if (ticks >= totalTicks) {
-        clearInterval(timer)
+      // Проверяем, достаточно ли близко к концу, чтобы замедлиться и дойти до targetIndex
+      const remainingTicks = totalTicks - ticks
+      const isNearEnd = remainingTicks < 15
+      
+      if (isNearEnd && currentIndex === targetIndex) {
+        // Достигли целевого индекса близко к концу
         const result = SECTORS[targetIndex]
         setCurrentSector(result)
         setIsSpinning(false)
-        if (partyMode) playTone(result.type === 'points' ? 620 : 260, 180)
-        if (result.type === 'bankrupt') setStatus('БАНКРОТ! Обнули очки игрока при необходимости.')
-        else if (result.type === 'lose_turn') setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
-        else setStatus(`Выпало ${result.value}. Назови букву или слово.`)
+        stopAudio(wheelMusicRef.current)
+        // if (partyMode) playTone(result.type === 'points' ? 620 : 260, 180)
+        
+        // Show Yakubovich message based on sector type
+        if (result.type === 'bankrupt') {
+          if (activePlayerId) {
+            updateScore(activePlayerId, 0)
+          }
+          setStatus('БАНКРОТ! Очки активного игрока обнулены.')
+          showYakubovichMessage(getRandomPhraseForActivePlayer(BANKRUPT_PHRASES))
+        } else if (result.type === 'lose_turn') {
+          setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
+          showYakubovichMessage(getRandomPhraseForActivePlayer(LOSE_TURN_PHRASES))
+          setTimeout(() => {
+            nextPlayer()
+          }, 2000)
+        } else {
+          setStatus(`Выпало ${result.value}. Назови букву или слово.`)
+          const callLetterPhrase = getRandomPhraseForActivePlayer(CALL_LETTER_PHRASES)
+          if (result.value === 1000) {
+            showYakubovichMessage('ОГО! ' + callLetterPhrase)
+          } else {
+            showYakubovichMessage(callLetterPhrase)
+          }
+        }
+      } else if (ticks >= totalTicks) {
+        // Fallback если что-то пошло не так
+        setSpinIndex(targetIndex)
+        const result = SECTORS[targetIndex]
+        setCurrentSector(result)
+        setIsSpinning(false)
+        stopAudio(wheelMusicRef.current)
+        // if (partyMode) playTone(result.type === 'points' ? 620 : 260, 180)
+        
+        if (result.type === 'bankrupt') {
+          if (activePlayerId) {
+            updateScore(activePlayerId, 0)
+          }
+          setStatus('БАНКРОТ! Очки активного игрока обнулены.')
+          showYakubovichMessage(getRandomPhraseForActivePlayer(BANKRUPT_PHRASES))
+        } else if (result.type === 'lose_turn') {
+          setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
+          showYakubovichMessage(getRandomPhraseForActivePlayer(LOSE_TURN_PHRASES))
+          setTimeout(() => {
+            nextPlayer()
+          }, 2000)
+        } else {
+          setStatus(`Выпало ${result.value}. Назови букву или слово.`)
+          const callLetterPhrase = getRandomPhraseForActivePlayer(CALL_LETTER_PHRASES)
+          if (result.value === 1000) {
+            showYakubovichMessage('ОГО! ' + callLetterPhrase)
+          } else {
+            showYakubovichMessage(callLetterPhrase)
+          }
+        }
+      } else {
+        // Эффект замедления: интервал увеличивается в зависимости от прогресса
+        const progress = ticks / totalTicks
+        const baseInterval = 50
+        const maxInterval = 300
+        const interval = baseInterval + (maxInterval - baseInterval) * (progress * progress)
+        setTimeout(spinStep, interval)
       }
-    }, 70)
+    }
+
+    spinStep()
   }
 
   const applyPointsToActive = (points: number) => {
@@ -270,10 +447,18 @@ export default function App() {
       } else {
         setStatus(`Есть ${count} шт. ${letter}.`)
       }
-      if (partyMode) playTone(720, 120)
+      showYakubovichMessage(getRandomPhraseForActivePlayer(GUESSED_LETTER_PHRASES))
+      if (partyMode) {
+        // playTone(720, 120)
+        playAudio(rightGuessAudioRef.current)
+      }
     } else {
       setStatus(`Буквы ${letter} нет. Передай ход.`)
-      if (partyMode) playTone(220, 140)
+      showYakubovichMessage(getRandomPhraseForActivePlayer(MISSED_LETTER_PHRASES))
+      if (partyMode) {
+        // playTone(220, 140)
+        playAudio(wrongGuessAudioRef.current)
+      }
     }
 
     setLetterInput('')
@@ -289,16 +474,22 @@ export default function App() {
       const letters = [...new Set(answer.replace(/\s+/g, '').split(''))]
       setOpenedLetters(letters)
       setStatus('СЛОВО УГАДАНО! 🎉')
+      showYakubovichMessage(getRandomPhraseForActivePlayer(GUESSED_WORD_PHRASES))
       setCelebrate(true)
       if (partyMode) {
-        playTone(660, 100)
-        setTimeout(() => playTone(880, 130), 120)
-        setTimeout(() => playTone(1040, 160), 280)
+        // playTone(660, 100)
+        // setTimeout(() => playTone(880, 130), 120)
+        // setTimeout(() => playTone(1040, 160), 280)
+        playAudio(rightGuessAudioRef.current)
       }
       setTimeout(() => setCelebrate(false), 1400)
     } else {
       setStatus('Неверное слово. Передай ход.')
-      if (partyMode) playTone(220, 160)
+      showYakubovichMessage(getRandomPhraseForActivePlayer(MISSED_WORD_PHRASES))
+      if (partyMode) {
+        // playTone(220, 160)
+        playAudio(wrongGuessAudioRef.current)
+      }
     }
 
     setWordInput('')
@@ -350,6 +541,32 @@ export default function App() {
   }
 
   useEffect(() => {
+    const wheel = new Audio(wheelMusicSrc)
+    wheel.loop = true
+    wheelMusicRef.current = wheel
+    wrongGuessAudioRef.current = new Audio(wrongGuessSrc)
+    rightGuessAudioRef.current = new Audio(rightGuessSrc)
+
+    return () => {
+      if (wheelMusicRef.current) {
+        wheelMusicRef.current.pause()
+        wheelMusicRef.current.currentTime = 0
+      }
+      if (wrongGuessAudioRef.current) {
+        wrongGuessAudioRef.current.pause()
+        wrongGuessAudioRef.current.currentTime = 0
+      }
+      if (rightGuessAudioRef.current) {
+        rightGuessAudioRef.current.pause()
+        rightGuessAudioRef.current.currentTime = 0
+      }
+      wheelMusicRef.current = null
+      wrongGuessAudioRef.current = null
+      rightGuessAudioRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const tag = (event.target as HTMLElement | null)?.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
@@ -381,12 +598,19 @@ export default function App() {
     )
   }, [players, activePlayerId, rounds, activeRoundId, openedLetters, usedLetters])
 
+  useEffect(() => {
+    return () => {
+      if (yakubovichTimerRef.current) {
+        clearTimeout(yakubovichTimerRef.current)
+      }
+    }
+  }, [])
+
   return (
     <div className="page">
       <header className="topbar">
         <h1>Поле Чудес — студия ведущего</h1>
         <div className="topbarActions">
-          <span className="step">Шаг 6/6: финальный стрим-полиш</span>
           <button className="ghost" onClick={() => setBigBoardMode((v) => !v)}>
             {bigBoardMode ? 'Обычное табло' : 'Big Board'}
           </button>
@@ -409,7 +633,20 @@ export default function App() {
       {!screenMode && <section className="turnCard">
         <div>
           <div className="label">Сейчас ходит</div>
-          <strong>{activePlayer ? `${activePlayer.avatar} ${activePlayer.name}` : 'Игрок не выбран'}</strong>
+          {activePlayer ? (
+            <strong>
+              {activePlayer.avatar.includes('.') || activePlayer.avatar.startsWith('data:') || activePlayer.avatar.startsWith('http') ? (
+                <>
+                  <img src={activePlayer.avatar} alt="" style={{ width: 24, height: 24, borderRadius: 4, marginRight: 8, verticalAlign: 'middle' }} />
+                  {activePlayer.name}
+                </>
+              ) : (
+                `${activePlayer.avatar} ${activePlayer.name}`
+              )}
+            </strong>
+          ) : (
+            <strong>Игрок не выбран</strong>
+          )}
         </div>
         <div className="turnActions">
           <button className="ghost" onClick={nextPlayer}>Следующий игрок (N)</button>
@@ -449,7 +686,21 @@ export default function App() {
               <div className="hostSetup hostSetupWide">
                 <input value={roundTitle} onChange={(e) => patchActiveRound({ title: e.target.value })} placeholder="Название раунда" />
                 <input value={hint} onChange={(e) => patchActiveRound({ hint: e.target.value })} placeholder="Вопрос" />
-                <input value={phrase} onChange={(e) => patchActiveRound({ phrase: e.target.value.toUpperCase() })} placeholder="Загаданное слово / фраза" />
+                <div className="visibilityInputWrap">
+                  <input
+                    type={showPhraseInput ? 'text' : 'password'}
+                    value={phrase}
+                    onChange={(e) => patchActiveRound({ phrase: e.target.value.toUpperCase() })}
+                    placeholder="Загаданное слово / фраза"
+                  />
+                  <button
+                    type="button"
+                    className="ghost visibilityToggleBtn"
+                    onClick={() => setShowPhraseInput((v) => !v)}
+                  >
+                    {showPhraseInput ? 'Скрыть' : 'Показать'}
+                  </button>
+                </div>
                 <button className="ghost" onClick={() => setShowAnswer((v) => !v)}>
                   {showAnswer ? 'Скрыть ответ' : 'Показать ответ ведущему'}
                 </button>
@@ -516,13 +767,22 @@ export default function App() {
               </button>
             </div>
 
-            <div className="wheelCircleWrap">
-              <div className="wheelPointer">▼</div>
+            <div className="wheelContent">
+              <div className='wheelYakubovich'>
+                <img src={showYakubovichSpeech ? yakunovichSayImg : yakunovichImg} alt="Ведущий" />
+                {showYakubovichSpeech && (
+                  <div className="yakubovichSpeechBubble">
+                    {yakubovichSpeech}
+                  </div>
+                )}
+              </div>
+
+              <div className="wheelCircleWrap">
               <div className="wheelCircle">
                 {SECTORS.map((s, i) => {
                   const angle = (360 / SECTORS.length) * i
                   const style = {
-                    transform: `rotate(${angle}deg) translateY(-120px) rotate(${-angle}deg)`,
+                    transform: `rotate(${angle}deg) translateY(-121px) rotate(${-angle}deg)`,
                   } as CSSProperties
                   return (
                     <div key={`${s.label}-${i}`} style={style} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
@@ -532,6 +792,7 @@ export default function App() {
                 })}
                 <div className="wheelCenter">🎡</div>
               </div>
+            </div>
             </div>
 
             <div className="wheelResult">
@@ -564,7 +825,11 @@ export default function App() {
                 {players.map((p) => (
                   <div key={p.id} className={`player ${activePlayerId === p.id ? 'active' : ''} ${screenMode ? 'playerStream' : ''}`}>
                     <button className="avatarBtn" onClick={() => setActivePlayerId(p.id)}>
-                      <span className="avatar">{p.avatar}</span>
+                      {p.avatar.includes('.') || p.avatar.startsWith('data:') || p.avatar.startsWith('http') ? (
+                        <img src={p.avatar} alt={p.name} className="avatarImg" />
+                      ) : (
+                        <span className="avatar">{p.avatar}</span>
+                      )}
                     </button>
 
                     <div className="playerInfo">
@@ -589,9 +854,7 @@ export default function App() {
 
                     {!screenMode && (
                       <div className="playerActions">
-                        <select value={p.avatar} onChange={(e) => updateAvatar(p.id, e.target.value)}>
-                          {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
-                        </select>
+                        <button className="mini" onClick={() => handleAvatarUpload(p.id)}>📷</button>
                         <button className="danger" onClick={() => removePlayer(p.id)}>Удалить</button>
                       </div>
                     )}

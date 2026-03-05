@@ -2,7 +2,8 @@
   min-height: 100vh;
   padding: 20px;
   box-sizing: border-box;
-  color: #0f172a;
+  color: #e0e0e0;
+  background-color: #4a4a4a;
 }
 
 .topbar {
@@ -25,7 +26,7 @@
 }
 
 .step {
-  color: #475569;
+  color: #b0b0b0;
   font-size: 13px;
 }
 
@@ -41,11 +42,11 @@
 
 .turnCard {
   margin-bottom: 14px;
-  background: #ffffff;
-  border: 1px solid #dbe5f4;
+  background: #555555;
+  border: 1px solid #666666;
   border-radius: 12px;
   padding: 12px 14px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -54,8 +55,8 @@
 
 .controlCard {
   margin-bottom: 14px;
-  background: #ffffff;
-  border: 1px solid #dbe5f4;
+  background: #555555;
+  border: 1px solid #666666;
   border-radius: 12px;
   padding: 10px;
   display: flex;
@@ -67,7 +68,7 @@
 .hotkeys {
   margin-left: auto;
   font-size: 12px;
-  color: #64748b;
+  color: #a0a0a0;
 }
 
 .turnActions {
@@ -78,11 +79,11 @@
 
 .boardCard,
 .card {
-  background: #ffffff;
-  border: 1px solid #dbe5f4;
+  background: #555555;
+  border: 1px solid #666666;
   border-radius: 12px;
   padding: 14px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
 .boardCard.celebrate {
@@ -106,11 +107,11 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  font-size: 20px;
 }
 
 .label {
-  color: #64748b;
-  font-size: 12px;
+  color: #a0a0a0;
 }
 
 .hostSetup {
@@ -124,22 +125,40 @@
   grid-template-columns: 170px 1fr 1fr auto;
 }
 
+.visibilityInputWrap {
+  position: relative;
+}
+
+.visibilityInputWrap input {
+  width: 100%;
+  padding-right: 98px;
+}
+
+.visibilityToggleBtn {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
 .hintPreview {
   margin-bottom: 8px;
   padding: 8px 10px;
-  border: 1px dashed #94a3b8;
+  border: 1px dashed #666666;
   border-radius: 8px;
-  background: #eff6ff;
-  color: #1e3a8a;
+  background: #4a5a6a;
+  color: #90caf9;
 }
 
 .answerPreview {
   margin-bottom: 10px;
   padding: 8px 10px;
-  border: 1px dashed #94a3b8;
+  border: 1px dashed #666666;
   border-radius: 8px;
-  background: #fffbeb;
-  color: #78350f;
+  background: #5a4a2a;
+  color: #ffc100;
 }
 
 .roundsRow {
@@ -150,8 +169,9 @@
 }
 
 .activeRoundBtn {
-  background: #dbeafe !important;
-  border-color: #93c5fd !important;
+  background: #4a6a8a !important;
+  border-color: #5a7aaa !important;
+  color: #e0e0e0 !important;
 }
 
 .boardGrid {
@@ -164,13 +184,14 @@
 .cell {
   width: 44px;
   height: 44px;
-  border: 1px solid #bfd0eb;
+  border: 1px solid #666666;
   border-radius: 8px;
   display: grid;
   place-items: center;
   font-size: 20px;
   font-weight: 700;
-  background: #f8fbff;
+  background: #3a3a3a;
+  color: #ffffff;
 }
 
 .boardGridBig {
@@ -189,31 +210,46 @@
 
 .guessCard {
   margin-top: 12px;
-  border: 1px solid #dbe5f4;
+  border: 1px solid #666666;
   border-radius: 10px;
   padding: 12px;
-  background: #f8fbff;
+  background: #4a4a4a;
 }
 
 .guessRow {
   display: grid;
-  grid-template-columns: 90px auto 1fr auto auto;
+  grid-template-columns: 110px auto 1fr auto auto;
   gap: 8px;
   margin-bottom: 8px;
+}
+
+.guessCard .guessRow input,
+.guessCard .guessRow button {
+  padding: 10px 12px;
+}
+
+.guessCard .guessRow input {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+
+.guessCard .guessRow button {
+  font-size: 1.2rem;
 }
 
 .usedLetters,
 .status {
   font-size: 13px;
-  color: #475569;
+  color: #b0b0b0;
 }
 
 .wheelCard {
   margin-top: 12px;
-  border: 1px solid #dbe5f4;
+  border: 1px solid #666666;
   border-radius: 10px;
   padding: 12px;
-  background: #f8fbff;
+  background: #00a8a9;
 }
 
 .wheelCardScreen {
@@ -233,12 +269,91 @@
   font-size: 18px;
 }
 
+.wheelYakubovich {
+  flex-shrink: 0;
+  width: 400px;
+  position: relative;
+}
+
+.wheelYakubovich img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.yakubovichSpeechBubble {
+  position: absolute;
+  right: -80px;
+  top: 10%;
+  transform: translateY(-50%);
+  width: 160px;
+  padding: 12px;
+  background: #fff;
+  border: 3px solid #000;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.2;
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  box-shadow: 0 0 0 2px #000;
+  animation: popIn 0.3s ease-out;
+  z-index: 10;
+}
+
+.yakubovichSpeechBubble::before {
+  content: '';
+  position: absolute;
+  bottom: -15px;
+  left: 20px;
+  width: 0;
+  height: 0;
+  border-left: 10px solid transparent;
+  border-top: 15px solid #fff;
+  z-index: -1;
+}
+
+.yakubovichSpeechBubble::after {
+  content: '';
+  position: absolute;
+  bottom: -18px;
+  left: 18px;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-top: 18px solid #000;
+  z-index: -2;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+.wheelContent {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 10px;
+  position: relative;
+  padding-right: 200px;
+}
+
 .wheelCircleWrap {
   position: relative;
   display: grid;
   place-items: center;
-  margin-bottom: 10px;
-  padding-top: 10px;
+  flex: 1;
 }
 
 .wheelPointer {
@@ -250,44 +365,74 @@
 }
 
 .wheelCircle {
-  width: 300px;
-  height: 300px;
+  width: 330px;
+  height: 330px;
   border-radius: 50%;
-  border: 4px solid #93c5fd;
-  background: radial-gradient(circle at 50% 50%, #eff6ff 0%, #dbeafe 65%, #bfdbfe 100%);
+  border: 9px solid #000;
+  background: conic-gradient(
+    from 22.5deg,
+    #fff 0deg 45deg,
+    #000 45deg 90deg,
+    #fff 90deg 135deg,
+    #000 135deg 180deg,
+    #fff 180deg 225deg,
+    #000 225deg 270deg,
+    #fff 270deg 315deg,
+    #000 315deg 360deg
+  );
   position: relative;
   display: grid;
   place-items: center;
+  box-shadow: 0 0 0 4px #ddd, 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
 .wheelSector {
   position: absolute;
   transform-origin: center center;
-  border: 1px solid #93c5fd;
-  background: #fff;
-  border-radius: 999px;
+  width: 55px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: 4px;
+  font-size: 12px;
   font-weight: 700;
-  white-space: nowrap;
+  white-space: normal;
+  color: #000;
+  transition: all 0.2s ease;
+}
+
+.wheelSector:nth-child(odd) {
+  color: #fff;
+}
+
+.wheelSector:nth-child(even) {
+  color: #000;
 }
 
 .wheelSector.active {
-  border-color: #2563eb;
-  background: #dbeafe;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  border: 3px solid #dc2626;
+  border-radius: 8px;
+  box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.4), 
+              inset 0 0 0 2px rgba(220, 38, 38, 0.6),
+              0 0 15px rgba(220, 38, 38, 0.6);
+  font-weight: 900;
+  transform-origin: 150px 150px;
 }
 
 .wheelCenter {
-  width: 84px;
-  height: 84px;
+  width: 88px;
+  height: 88px;
   border-radius: 50%;
-  background: #fff;
-  border: 2px solid #93c5fd;
+  background: radial-gradient(circle at 35% 35%, #fff 0%, #f0f0f0 100%);
+  border: 3px solid #000;
   display: grid;
   place-items: center;
-  font-size: 30px;
+  font-size: 40px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 3px rgba(255, 255, 255, 0.8);
+  position: relative;
+  z-index: 10;
 }
 
 .wheelResult {
@@ -313,6 +458,16 @@ h2 {
   font-size: 18px;
 }
 
+.panel > .card:first-child {
+  padding: 14px;
+  align-self: start;
+}
+
+.panel > .card:first-child h2 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
 .formRow {
   display: grid;
   grid-template-columns: 1fr 88px auto;
@@ -323,10 +478,15 @@ input,
 select,
 button {
   border-radius: 8px;
-  border: 1px solid #bfd0eb;
-  background: #ffffff;
-  color: #0f172a;
+  border: 1px solid #666666;
+  background: #3a3a3a;
+  color: #e0e0e0;
   padding: 8px 10px;
+}
+
+input,
+input::placeholder {
+  font-family: monospace;
 }
 
 button {
@@ -336,10 +496,10 @@ button {
   cursor: pointer;
 }
 
-button.ghost {
-  background: #e2e8f0;
-  border-color: #cbd5e1;
-  color: #0f172a;
+.ghost {
+  background: #555555 !important;
+  border-color: #666666 !important;
+  color: #e0e0e0 !important;
 }
 
 .players {
@@ -358,44 +518,55 @@ button.ghost {
 .player {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
-  border: 1px solid #dbe5f4;
+  border: 1px solid #666666;
   border-radius: 10px;
-  padding: 8px;
-  background: #f8fbff;
+  padding: 12px;
+  background: #4a4a4a;
+  min-height: 80px;
 }
 
 .player.active {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6 inset;
+  border-color: #5a7aaa;
+  box-shadow: 0 0 0 2px #5a7aaa inset;
 }
 
 .avatarBtn {
-  border: 1px solid #bfd0eb;
-  background: #fff;
-  width: 44px;
-  height: 44px;
+  border: 1px solid #666666;
+  background: #3a3a3a;
+  width: 80px;
+  height: 80px;
   display: grid;
   place-items: center;
-  border-radius: 999px;
+  border-radius: 10px;
   padding: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .avatar {
-  font-size: 20px;
+  font-size: 28px;
 }
 
 .playerName {
   font-weight: 700;
+  font-size: 18px;
   margin-bottom: 4px;
+  color: #ffffff;
 }
 
 .scoreWrap {
   display: grid;
   gap: 4px;
   font-size: 12px;
-  color: #64748b;
+  color: #a0a0a0;
 }
 
 .scoreWrap input {
@@ -405,7 +576,7 @@ button.ghost {
 .scoreValue {
   font-size: 28px;
   font-weight: 800;
-  color: #0b3a8f;
+  color: #5abaff;
 }
 
 .quickScoreRow {
@@ -431,7 +602,7 @@ button.danger {
 }
 
 .empty {
-  color: #64748b;
+  color: #a0a0a0;
 }
 
 @media (max-width: 980px) {

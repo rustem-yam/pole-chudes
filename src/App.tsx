@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useRef, type CSSProperties } from 'react'
-import './App.css'
+import './App.scss'
 import yakunovichImg from './assets/yakubovich.jpg'
 import yakunovichSayImg from './assets/yakubovich-say.jpg'
 import natashaImg from './assets/natasha.png'
@@ -21,6 +21,10 @@ type Sector =
   | { type: 'points'; label: string; value: number }
   | { type: 'bankrupt'; label: string }
   | { type: 'lose_turn'; label: string }
+  | { type: 'prize'; label: string }
+  | { type: 'plus'; label: string }
+  | { type: 'multiplier'; label: string }
+  | { type: 'key'; label: string }
 
 type RoundItem = {
   id: string
@@ -48,14 +52,42 @@ const DEFAULT_ROUND: RoundItem = {
 }
 
 const SECTORS: Sector[] = [
-  { type: 'points', value: 100, label: '100' },
-  { type: 'points', value: 200, label: '200' },
-  { type: 'points', value: 300, label: '300' },
+  { type: 'points', value: 0, label: '0' },
+  { type: 'points', value: 450, label: '450' },
+  { type: 'points', value: 850, label: '850' },
+  { type: 'points', value: 400, label: '400' },
+  { type: 'points', value: 600, label: '600' },
+  { type: 'prize', label: 'П' },
   { type: 'points', value: 500, label: '500' },
+  { type: 'points', value: 350, label: '350' },
+  { type: 'points', value: 800, label: '800' },
+  { type: 'points', value: 600, label: '600' },
+  { type: 'points', value: 750, label: '750' },
+  { type: 'plus', label: '+' },
+  { type: 'points', value: 600, label: '600' },
+  { type: 'points', value: 350, label: '350' },
+  { type: 'points', value: 500, label: '500' },
+  { type: 'bankrupt', label: 'Б' },
+  { type: 'points', value: 400, label: '400' },
+  { type: 'points', value: 600, label: '600' },
+  { type: 'points', value: 350, label: '350' },
+  { type: 'points', value: 500, label: '500' },
+  { type: 'points', value: 450, label: '450' },
+  { type: 'points', value: 800, label: '800' },
+  { type: 'prize', label: 'П' },
+  { type: 'points', value: 500, label: '500' },
+  { type: 'points', value: 800, label: '800' },
+  { type: 'multiplier', label: 'x2' },
   { type: 'points', value: 700, label: '700' },
+  { type: 'points', value: 350, label: '350' },
+  { type: 'key', label: '🔑' },
+  { type: 'points', value: 600, label: '600' },
+  { type: 'points', value: 750, label: '750' },
+  { type: 'points', value: 550, label: '550' },
+  { type: 'points', value: 250, label: '250' },
+  { type: 'points', value: 350, label: '350' },
+  { type: 'points', value: 500, label: '500' },
   { type: 'points', value: 1000, label: '1000' },
-  { type: 'bankrupt', label: 'БАНКРОТ' },
-  { type: 'lose_turn', label: 'ПРОПУСК ХОДА' },
 ]
 
 function uid() {
@@ -111,11 +143,20 @@ function readPersistedState(): PersistedState | null {
 export default function App() {
   const [persisted] = useState<PersistedState | null>(() => readPersistedState())
 
+  // Track scores for default players separately
+  const [defaultPlayerScores, setDefaultPlayerScores] = useState<Record<string, number>>(() => {
+    const scores: Record<string, number> = {}
+    DEFAULT_PLAYERS.forEach(p => {
+      scores[p.id] = 0
+    })
+    return scores
+  })
+
   const [players, setPlayers] = useState<Player[]>(
-    (persisted?.players && persisted.players.length > 0) ? persisted.players : DEFAULT_PLAYERS
+    (persisted?.players && persisted.players.length > 0) ? persisted.players : []
   )
   const [activePlayerId, setActivePlayerId] = useState<string | null>(
-    persisted?.activePlayerId ?? DEFAULT_PLAYERS[0]?.id ?? null
+    persisted?.activePlayerId ?? (persisted?.players?.[0]?.id ?? null)
   )
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newAvatar, setNewAvatar] = useState(AVATARS[0])
@@ -145,6 +186,9 @@ export default function App() {
   const [celebrate, setCelebrate] = useState(false)
   const [yakubovichSpeech, setYakubovichSpeech] = useState('')
   const [showYakubovichSpeech, setShowYakubovichSpeech] = useState(false)
+
+  const [activeMultiplier, setActiveMultiplier] = useState<number>(1)
+  const [plusSectorActive, setPlusSectorActive] = useState(false)
 
   const yakubovichTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const wheelMusicRef = useRef<HTMLAudioElement | null>(null)
@@ -243,7 +287,30 @@ export default function App() {
     if (!activePlayerId) setActivePlayerId(p.id)
   }
 
+  const addDefaultPlayer = (defaultPlayer: Player) => {
+    // Check if already added
+    if (players.find(p => p.id === defaultPlayer.id)) return
+    
+    // Add with current score from defaultPlayerScores
+    const playerToAdd: Player = {
+      ...defaultPlayer,
+      score: defaultPlayerScores[defaultPlayer.id] || 0,
+    }
+    setPlayers((prev) => [...prev, playerToAdd])
+    if (!activePlayerId) setActivePlayerId(playerToAdd.id)
+  }
+
   const removePlayer = (id: string) => {
+    const playerToRemove = players.find(p => p.id === id)
+    
+    // Save score for default players
+    if (playerToRemove && DEFAULT_PLAYERS.find(p => p.id === id)) {
+      setDefaultPlayerScores((prev) => ({
+        ...prev,
+        [id]: playerToRemove.score,
+      }))
+    }
+    
     setPlayers((prev) => prev.filter((p) => p.id !== id))
     if (activePlayerId === id) {
       const next = players.find((p) => p.id !== id)
@@ -252,13 +319,33 @@ export default function App() {
   }
 
   const updateScore = (id: string, value: number) => {
+    // Update in players list
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, score: value } : p)))
+    
+    // Also update in defaultPlayerScores if it's a default player
+    if (DEFAULT_PLAYERS.find(p => p.id === id)) {
+      setDefaultPlayerScores((prev) => ({
+        ...prev,
+        [id]: value,
+      }))
+    }
   }
 
   const adjustScore = (id: string, delta: number) => {
     setPlayers((prev) =>
       prev.map((p) => (p.id === id ? { ...p, score: Math.max(0, p.score + delta) } : p)),
     )
+    
+    // Also update in defaultPlayerScores if it's a default player
+    if (DEFAULT_PLAYERS.find(p => p.id === id)) {
+      const currentPlayer = players.find(p => p.id === id)
+      if (currentPlayer) {
+        setDefaultPlayerScores((prev) => ({
+          ...prev,
+          [id]: Math.max(0, currentPlayer.score + delta),
+        }))
+      }
+    }
   }
 
   const resetScore = (id: string) => {
@@ -342,85 +429,47 @@ export default function App() {
     }
 
     const targetIndex = Math.floor(Math.random() * SECTORS.length)
-    let ticks = 0
     let currentIndex = spinIndex
-    const totalTicks = 60 + targetIndex
+    // Вычисляем количество шагов до целевого индекса (с несколькими полными оборотами)
+    const stepsToTarget = ((targetIndex - currentIndex + SECTORS.length) % SECTORS.length) + (SECTORS.length * 3) // 3 полных оборота + целевой сектор
+    let stepCount = 0
 
     const spinStep = () => {
-      ticks += 1
+      stepCount += 1
       currentIndex = (currentIndex + 1) % SECTORS.length
       setSpinIndex(currentIndex)
 
-      // Проверяем, достаточно ли близко к концу, чтобы замедлиться и дойти до targetIndex
-      const remainingTicks = totalTicks - ticks
-      const isNearEnd = remainingTicks < 15
+      const remainingSteps = stepsToTarget - stepCount
       
-      if (isNearEnd && currentIndex === targetIndex) {
-        // Достигли целевого индекса близко к концу
-        const result = SECTORS[targetIndex]
+      if (remainingSteps <= 0) {
+        // Достигли целевого индекса
+        const result = SECTORS[currentIndex]
         setCurrentSector(result)
         setIsSpinning(false)
         stopAudio(wheelMusicRef.current)
-        // if (partyMode) playTone(result.type === 'points' ? 620 : 260, 180)
         
-        // Show Yakubovich message based on sector type
-        if (result.type === 'bankrupt') {
-          if (activePlayerId) {
-            updateScore(activePlayerId, 0)
-          }
-          setStatus('БАНКРОТ! Очки активного игрока обнулены.')
-          showYakubovichMessage(getRandomPhraseForActivePlayer(BANKRUPT_PHRASES))
-        } else if (result.type === 'lose_turn') {
-          setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
-          showYakubovichMessage(getRandomPhraseForActivePlayer(LOSE_TURN_PHRASES))
-          setTimeout(() => {
-            nextPlayer()
-          }, 2000)
-        } else {
-          setStatus(`Выпало ${result.value}. Назови букву или слово.`)
-          const callLetterPhrase = getRandomPhraseForActivePlayer(CALL_LETTER_PHRASES)
-          if (result.value === 1000) {
-            showYakubovichMessage('ОГО! ' + callLetterPhrase)
-          } else {
-            showYakubovichMessage(callLetterPhrase)
-          }
-        }
-      } else if (ticks >= totalTicks) {
-        // Fallback если что-то пошло не так
-        setSpinIndex(targetIndex)
-        const result = SECTORS[targetIndex]
-        setCurrentSector(result)
-        setIsSpinning(false)
-        stopAudio(wheelMusicRef.current)
-        // if (partyMode) playTone(result.type === 'points' ? 620 : 260, 180)
-        
-        if (result.type === 'bankrupt') {
-          if (activePlayerId) {
-            updateScore(activePlayerId, 0)
-          }
-          setStatus('БАНКРОТ! Очки активного игрока обнулены.')
-          showYakubovichMessage(getRandomPhraseForActivePlayer(BANKRUPT_PHRASES))
-        } else if (result.type === 'lose_turn') {
-          setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
-          showYakubovichMessage(getRandomPhraseForActivePlayer(LOSE_TURN_PHRASES))
-          setTimeout(() => {
-            nextPlayer()
-          }, 2000)
-        } else {
-          setStatus(`Выпало ${result.value}. Назови букву или слово.`)
-          const callLetterPhrase = getRandomPhraseForActivePlayer(CALL_LETTER_PHRASES)
-          if (result.value === 1000) {
-            showYakubovichMessage('ОГО! ' + callLetterPhrase)
-          } else {
-            showYakubovichMessage(callLetterPhrase)
-          }
-        }
+        handleSectorResult(result)
       } else {
-        // Эффект замедления: интервал увеличивается в зависимости от прогресса
-        const progress = ticks / totalTicks
-        const baseInterval = 50
-        const maxInterval = 300
-        const interval = baseInterval + (maxInterval - baseInterval) * (progress * progress)
+        // Вычисляем интервал на основе оставшихся шагов
+        let interval: number
+        
+        if (remainingSteps <= 3) {
+          // Последние 3 шага - самые медленные
+          interval = 600
+        } else if (remainingSteps <= 8) {
+          // Последние 8 шагов - очень медленно
+          interval = 400 + (remainingSteps * 30)
+        } else if (remainingSteps <= 15) {
+          // Замедление перед финишем
+          interval = 250 + (remainingSteps * 15)
+        } else if (remainingSteps <= 25) {
+          // Среднее замедление
+          interval = 150 + (remainingSteps * 5)
+        } else {
+          // Быстрое вращение в начале
+          interval = 60
+        }
+        
         setTimeout(spinStep, interval)
       }
     }
@@ -430,12 +479,109 @@ export default function App() {
 
   const applyPointsToActive = (points: number) => {
     if (!activePlayerId) return
-    setPlayers((prev) =>
-      prev.map((p) => (p.id === activePlayerId ? { ...p, score: p.score + points } : p)),
-    )
+    setPlayers((prev) => {
+      const updated = prev.map((p) => (p.id === activePlayerId ? { ...p, score: p.score + points } : p))
+      
+      // Also update in defaultPlayerScores if it's a default player
+      if (DEFAULT_PLAYERS.find(p => p.id === activePlayerId)) {
+        setDefaultPlayerScores((scoresPrev) => ({
+          ...scoresPrev,
+          [activePlayerId]: (scoresPrev[activePlayerId] || 0) + points,
+        }))
+      }
+      
+      return updated
+    })
+  }
+
+  const handleSectorResult = (result: Sector) => {
+    if (result.type === 'bankrupt') {
+      if (activePlayerId) {
+        updateScore(activePlayerId, 0)
+      }
+      setStatus('БАНКРОТ! Очки активного игрока обнулены.')
+      showYakubovichMessage(getRandomPhraseForActivePlayer(BANKRUPT_PHRASES))
+    } else if (result.type === 'lose_turn') {
+      setStatus('ПРОПУСК ХОДА! Передай ход следующему игроку.')
+      showYakubovichMessage(getRandomPhraseForActivePlayer(LOSE_TURN_PHRASES))
+      setTimeout(() => {
+        nextPlayer()
+      }, 2000)
+    } else if (result.type === 'prize') {
+      setStatus('🎁 ПРИЗ! Ведущий проигрывает приз.')
+      showYakubovichMessage('Прекрасное совпадение! Выпал ПРИЗ!')
+    } else if (result.type === 'plus') {
+      setPlusSectorActive(true)
+      setStatus('✨ ПЛЮС! Введите номер буквы для открытия.')
+      showYakubovichMessage('ПЛЮС! Откройте букву по номеру, очки не начисляются.')
+    } else if (result.type === 'multiplier') {
+      setActiveMultiplier(2)
+      setStatus('✖️ УДВОЕНИЕ! Следующие очки за букву будут удвоены (если 2 буквы - утроены, если 3 - умножены на 4).')
+      showYakubovichMessage('УДВОЕНИЕ! Множитель активирован!')
+    } else if (result.type === 'key') {
+      setStatus('🔑 КЛЮЧ! Ведущий проигрывает ключ.')
+      showYakubovichMessage('Ключ от квартиры! Выпал КЛЮЧ!')
+    } else if (result.type === 'points') {
+      setStatus(`Выпало ${result.value}. Назови букву или слово.`)
+      const callLetterPhrase = getRandomPhraseForActivePlayer(CALL_LETTER_PHRASES)
+      if (result.value === 1000) {
+        showYakubovichMessage('ОГО! ' + callLetterPhrase)
+      } else {
+        showYakubovichMessage(callLetterPhrase)
+      }
+    }
   }
 
   const guessLetter = () => {
+    const input = letterInput.trim()
+    if (!input) return
+
+    // Check if input is a number (for plus sector logic)
+    const numberInput = parseInt(input, 10)
+    if (!isNaN(numberInput) && numberInput >= 1) {
+      // Logic for opening letter by number (plus sector)
+      const normalizedPhrase = phrase.toUpperCase()
+      const letters = normalizedPhrase.replace(/\s/g, '').split('')
+      
+      if (numberInput > letters.length) {
+        setStatus(`Буква номер ${numberInput} не существует (всего ${letters.length} букв).`)
+        return
+      }
+
+      const targetLetter = letters[numberInput - 1]
+      if (!targetLetter) {
+        setStatus(`Ошибка: буква номер ${numberInput} не найдена.`)
+        return
+      }
+
+      if (openedLetters.includes(targetLetter)) {
+        setStatus(`Буква номер ${numberInput} (${targetLetter}) уже открыта.`)
+        return
+      }
+
+      // Open the letter
+      setOpenedLetters((prev) => [...new Set([...prev, targetLetter])])
+      setUsedLetters((prev) => [...prev, targetLetter])
+      
+      // Count how many times this letter appears
+      const count = letters.filter((ch) => ch === targetLetter).length
+      
+      setStatus(`✨ Открыта буква ${targetLetter} (${count} шт.). Очки не начислены.`)
+      showYakubovichMessage('Буква открыта!')
+      if (partyMode) {
+        playAudio(rightGuessAudioRef.current)
+      }
+      
+      // Deactivate plus sector after use
+      if (plusSectorActive) {
+        setPlusSectorActive(false)
+      }
+
+      setLetterInput('')
+      return
+    }
+
+    // Regular letter logic
     const letter = normalizeLetter(letterInput)
     if (!letter || letter.length !== 1) return
     if (usedLetters.includes(letter)) {
@@ -451,22 +597,47 @@ export default function App() {
     if (count > 0) {
       setOpenedLetters((prev) => [...new Set([...prev, letter])])
 
-      if (currentSector?.type === 'points') {
-        applyPointsToActive(currentSector.value * count)
-        setStatus(`Есть ${count} шт. ${letter}. Начислено: ${currentSector.value * count}`)
+      // Check for plus sector activation
+      if (plusSectorActive) {
+        setStatus(`✨ Буква ${letter} открыта сектором ПЛЮС. Очки не начислены.`)
+        setPlusSectorActive(false)
+        showYakubovichMessage(getRandomPhraseForActivePlayer(GUESSED_LETTER_PHRASES))
+      } else if (currentSector?.type === 'points') {
+        // Apply multiplier if active
+        let multiplier = 1
+        if (activeMultiplier > 1) {
+          if (count === 1) {
+            multiplier = activeMultiplier
+          } else if (count === 2) {
+            multiplier = activeMultiplier + 1
+          } else if (count >= 3) {
+            multiplier = activeMultiplier + 2
+          }
+          setActiveMultiplier(1) // Reset multiplier after use
+        }
+
+        const pointsToAdd = currentSector.value * count * multiplier
+        applyPointsToActive(pointsToAdd)
+        
+        if (multiplier > 1) {
+          setStatus(`Есть ${count} шт. ${letter}. Множитель x${multiplier}! Начислено: ${pointsToAdd}`)
+        } else {
+          setStatus(`Есть ${count} шт. ${letter}. Начислено: ${pointsToAdd}`)
+        }
       } else {
         setStatus(`Есть ${count} шт. ${letter}.`)
       }
-      showYakubovichMessage(getRandomPhraseForActivePlayer(GUESSED_LETTER_PHRASES))
+      
+      if (!plusSectorActive) {
+        showYakubovichMessage(getRandomPhraseForActivePlayer(GUESSED_LETTER_PHRASES))
+      }
       if (partyMode) {
-        // playTone(720, 120)
         playAudio(rightGuessAudioRef.current)
       }
     } else {
       setStatus(`Буквы ${letter} нет. Передай ход.`)
       showYakubovichMessage(getRandomPhraseForActivePlayer(MISSED_LETTER_PHRASES))
       if (partyMode) {
-        // playTone(220, 140)
         playAudio(wrongGuessAudioRef.current)
       }
     }
@@ -484,12 +655,11 @@ export default function App() {
       const letters = [...new Set(answer.replace(/\s+/g, '').split(''))]
       setOpenedLetters(letters)
       setStatus('СЛОВО УГАДАНО! 🎉')
+      setActiveMultiplier(1)
+      setPlusSectorActive(false)
       showYakubovichMessage(getRandomPhraseForActivePlayer(GUESSED_WORD_PHRASES))
       setCelebrate(true)
       if (partyMode) {
-        // playTone(660, 100)
-        // setTimeout(() => playTone(880, 130), 120)
-        // setTimeout(() => playTone(1040, 160), 280)
         playAudio(rightGuessAudioRef.current)
       }
       setTimeout(() => setCelebrate(false), 1400)
@@ -511,6 +681,8 @@ export default function App() {
     setLetterInput('')
     setWordInput('')
     setCurrentSector(null)
+    setActiveMultiplier(1)
+    setPlusSectorActive(false)
     setStatus('Новый раунд готов')
   }
 
@@ -699,10 +871,13 @@ export default function App() {
                 <input value={hint} onChange={(e) => patchActiveRound({ hint: e.target.value })} placeholder="Вопрос" />
                 <div className="visibilityInputWrap">
                   <input
-                    type={showPhraseInput ? 'text' : 'password'}
+                    type="text"
                     value={phrase}
                     onChange={(e) => patchActiveRound({ phrase: e.target.value.toUpperCase() })}
                     placeholder="Загаданное слово / фраза"
+                    className={!showPhraseInput ? 'hiddenText' : ''}
+                    autoComplete="off"
+                    spellCheck="false"
                   />
                   <button
                     type="button"
@@ -753,11 +928,15 @@ export default function App() {
           <div className="guessCard">
             <div className="guessRow">
               <input
-                placeholder="Буква"
+                placeholder={
+                  plusSectorActive ? "Номер буквы (1-...)" : "Буква"
+                }
                 value={letterInput}
-                onChange={(e) => setLetterInput(e.target.value.slice(0, 1))}
+                onChange={(e) => setLetterInput(plusSectorActive ? e.target.value : e.target.value.slice(0, 1))}
               />
-              <button onClick={guessLetter}>Открыть букву</button>
+              <button onClick={guessLetter}>
+                {plusSectorActive ? "Открыть по номеру" : "Открыть букву"}
+              </button>
               <input
                 placeholder="Слово целиком"
                 value={wordInput}
@@ -767,6 +946,8 @@ export default function App() {
               <button className="ghost" onClick={resetRound}>Новый раунд</button>
             </div>
             <div className="usedLetters">Были буквы: {usedLetters.join(', ') || '—'}</div>
+            {activeMultiplier > 1 && <div className="status" style={{color: '#ff9800'}}>✖️ Множитель x{activeMultiplier} активен!</div>}
+            {plusSectorActive && <div className="status" style={{color: '#9c27b0'}}>✨ ПЛЮС активен - введите номер буквы!</div>}
             <div className="status">Статус: {status}</div>
           </div>
 
@@ -793,7 +974,7 @@ export default function App() {
                 {SECTORS.map((s, i) => {
                   const angle = (360 / SECTORS.length) * i
                   const style = {
-                    transform: `rotate(${angle}deg) translateY(-121px) rotate(${-angle}deg)`,
+                    transform: `rotate(${angle}deg) translateY(-224px) rotate(${-angle}deg)`,
                   } as CSSProperties
                   return (
                     <div key={`${s.label}-${i}`} style={style} className={`wheelSector ${i === spinIndex ? 'active' : ''}`}>
@@ -817,12 +998,57 @@ export default function App() {
           {!screenMode && (
             <div className="card">
               <h2>Добавить игрока</h2>
-              <div className="formRow">
-                <input placeholder="Имя игрока" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />
-                <select value={newAvatar} onChange={(e) => setNewAvatar(e.target.value)}>
-                  {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
-                </select>
-                <button onClick={addPlayer}>Добавить</button>
+              
+              {/* Available default players */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ fontSize: '12px', color: '#a0a0a0', marginBottom: '6px' }}>Мои персонажи:</div>
+                <div style={{ display: 'grid', gap: '6px' }}>
+                  {DEFAULT_PLAYERS.map((defaultPlayer) => {
+                    const isAdded = players.find(p => p.id === defaultPlayer.id)
+                    return (
+                      <div
+                        key={defaultPlayer.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr auto auto',
+                          gap: '6px',
+                          alignItems: 'center',
+                          padding: '6px 8px',
+                          background: '#4a4a4a',
+                          borderRadius: '6px',
+                          border: '1px solid #555555',
+                          opacity: isAdded ? 0.5 : 1,
+                        }}
+                      >
+                        <span>{defaultPlayer.name}</span>
+                        <span style={{ fontSize: '12px', color: '#b0b0b0' }}>
+                          {defaultPlayerScores[defaultPlayer.id] || 0}
+                        </span>
+                        <button
+                          className="mini"
+                          onClick={() => isAdded ? removePlayer(defaultPlayer.id) : addDefaultPlayer(defaultPlayer)}
+                          style={{
+                            background: isAdded ? '#dc2626' : '#2563eb',
+                            borderColor: isAdded ? '#dc2626' : '#2563eb',
+                          }}
+                        >
+                          {isAdded ? '✕' : '+'}
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #555555', paddingTop: '8px', marginTop: '8px' }}>
+                <div style={{ fontSize: '12px', color: '#a0a0a0', marginBottom: '6px' }}>Создать нового:</div>
+                <div className="formRow">
+                  <input placeholder="Имя игрока" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} />
+                  <select value={newAvatar} onChange={(e) => setNewAvatar(e.target.value)}>
+                    {AVATARS.map((a) => <option value={a} key={a}>{a}</option>)}
+                  </select>
+                  <button onClick={addPlayer}>Добавить</button>
+                </div>
               </div>
             </div>
           )}

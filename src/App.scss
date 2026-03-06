@@ -161,12 +161,16 @@ $inner-wheel-gradient: generate-wheel-gradient(12, 30deg);
     padding-right: 98px;
 
     &.hiddenText {
+      font-size: 14px;
       color: transparent;
-      text-shadow: 0 0 0 #e0e0e0;
+      text-shadow: 0 0 0 6px #e0e0e0;
+      letter-spacing: 6px;
       caret-color: #e0e0e0;
 
       &::placeholder {
-        color: transparent;
+        text-shadow: none;
+        font-size: 14px;
+        color: #666666;
       }
     }
   }
